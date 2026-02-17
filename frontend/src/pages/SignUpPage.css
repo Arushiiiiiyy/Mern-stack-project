@@ -1,0 +1,137 @@
+.form {
+  width: 100%;
+}
+
+.form input {
+  width: 100%;
+}
+
+
+/* Root container */
+.signup-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+}
+
+/* Full background image */
+.bg-image {
+  position: absolute;
+  inset: 0;
+  background: url("/felicity_bg.jpg") center/cover no-repeat;
+}
+
+/* Left translucent panel */
+.left-panel {
+  position: relative;
+  z-index: 2;
+  width: 40%;
+  height: 100%;
+  padding: 4rem 3rem;
+
+  background: rgba(10, 15, 20, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Divider line – moved right */
+.divider {
+  position: absolute;
+  top: 0;
+  left: 45%;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  z-index: 3;
+}
+
+/* Title */
+.title {
+  font-size: 3rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 2rem;
+}
+
+/* Form */
+.form {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Inputs */
+.form input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 12px 14px;
+  border-radius: 6px;
+  color: white;
+  outline: none;
+}
+
+.form input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Select dropdown */
+.form select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 12px 14px;
+  border-radius: 6px;
+  color: white;
+  outline: none;
+  font-size: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 5.5l6.5 6 6.5-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.form select option {
+  background: #1a1a2e;
+  color: white;
+}
+
+/* Button */
+.register-btn {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  background: #1f3cff;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.register-btn:hover {
+  background: #324cff;
+}
+
+/* Login text */
+.login-text {
+  margin-top: 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.login-text a {
+  color: #6fa8ff;
+  text-decoration: none;
+}
