@@ -1,16 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import QRCode from 'react-qr-code';
 
 const ParticipantDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [registrations, setRegistrations] = useState([]);
   const [recommended, setRecommended] = useState([]);
   const [activeTab, setActiveTab] = useState('upcoming');
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
+
+  const fetchRecommendations = useCallback(async () => {
+    try {
+      const { data } = await API.get('/events/recommended');
+      setRecommended(data);
+    } catch (err) {
+      console.error('Could not load recommendations:', err);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,14 +36,10 @@ const ParticipantDashboard = () => {
     fetchData();
   }, []);
 
-  const fetchRecommendations = async () => {
-    try {
-      const { data } = await API.get('/events/recommended');
-      setRecommended(data);
-    } catch (err) {
-      console.error('Could not load recommendations:', err);
-    }
-  };
+  // Re-fetch recommendations every time user navigates back to this page
+  useEffect(() => {
+    fetchRecommendations();
+  }, [location.key]);
 
   const now = new Date();
   const upcoming = registrations.filter(r => r.event && new Date(r.event.startDate) > now && r.statuses !== 'Cancelled');
@@ -182,7 +188,22 @@ const ParticipantDashboard = () => {
           {recommended.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
               <p style={{ fontSize: '2rem', marginBottom: '8px' }}>🔍</p>
-              <p style={{ color: '#666' }}>Follow some clubs or add interests to get personalized recommendations</p>
+              <p style={{ color: '#888', marginBottom: '16px', lineHeight: 1.6 }}>
+                You haven't followed any clubs or set your interests yet.<br />
+                Personalize your experience to get tailored recommendations!
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button onClick={() => navigate('/profile')} style={{
+                  padding: '10px 24px', background: 'rgba(59,130,246,0.15)',
+                  border: '1px solid rgba(59,130,246,0.3)', borderRadius: '12px',
+                  color: '#3b82f6', fontWeight: 600, cursor: 'pointer'
+                }}>🎯 Set Interests</button>
+                <button onClick={() => navigate('/clubs')} style={{
+                  padding: '10px 24px', background: 'rgba(34,197,94,0.15)',
+                  border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px',
+                  color: '#22c55e', fontWeight: 600, cursor: 'pointer'
+                }}>🏢 Browse & Follow Clubs</button>
+              </div>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>

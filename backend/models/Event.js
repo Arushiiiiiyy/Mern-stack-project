@@ -35,6 +35,9 @@ const eventSchema=new mongoose.Schema({
         }
     ],
     purchaseLimitPerUser:{type:Number,default:1},
+    isTeamEvent:{type:Boolean,default:false},
+    minTeamSize:{type:Number,default:2},
+    maxTeamSize:{type:Number,default:4},
     tags:[String],
     status:{
         type:String,

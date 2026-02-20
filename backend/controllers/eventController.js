@@ -11,8 +11,27 @@ export const createEvent = async (req, res) => {
       name, description, type, startDate, endDate,
       registrationDeadline, venue, limit, price,
       formFields, variants, tags, status, eligibility,
-      merchandiseImage, purchaseLimitPerUser
+      merchandiseImage, purchaseLimitPerUser,
+      isTeamEvent, minTeamSize, maxTeamSize
     } = req.body;
+
+    // Check for duplicate event name
+    const existingEvent = await Event.findOne({ name: { $regex: `^${name.trim()}$`, $options: 'i' } });
+    if (existingEvent) {
+      return res.status(400).json({ message: 'An event with this name already exists. Please choose a different name.' });
+    }
+
+    // Validate dates are logical
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const regDeadline = new Date(registrationDeadline);
+
+    if (end <= start) {
+      return res.status(400).json({ message: 'End date/time must be after start date/time.' });
+    }
+    if (regDeadline >= start) {
+      return res.status(400).json({ message: 'Registration deadline must be before the event start date/time.' });
+    }
 
     const event = await Event.create({
       organizer: req.user._id,
@@ -20,8 +39,40 @@ export const createEvent = async (req, res) => {
       registrationDeadline, venue, limit, price,
       formFields, variants, tags, eligibility,
       merchandiseImage, purchaseLimitPerUser,
+      isTeamEvent, minTeamSize, maxTeamSize,
       status: status || 'Draft'
     });
+
+    // Discord Webhook: auto-post new event to organizer's Discord
+    try {
+      const organizer = await User.findById(req.user._id);
+      if (organizer?.discordWebhook) {
+        const dateStr = start.toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
+        const webhookPayload = {
+          embeds: [{
+            title: `🎉 New Event: ${name}`,
+            description: description?.slice(0, 300) || '',
+            color: type === 'Merchandise' ? 0xa855f7 : 0x3b82f6,
+            fields: [
+              { name: '📅 Date', value: dateStr, inline: true },
+              { name: '📍 Venue', value: venue, inline: true },
+              { name: '💰 Price', value: price > 0 ? `₹${price}` : 'Free', inline: true },
+              { name: '👥 Capacity', value: `${limit}`, inline: true },
+              { name: '🏷️ Type', value: type, inline: true }
+            ],
+            footer: { text: `By ${organizer.name} • Felicity 2026` },
+            timestamp: new Date().toISOString()
+          }]
+        };
+        fetch(organizer.discordWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(webhookPayload)
+        }).catch(e => console.error('Discord webhook failed:', e.message));
+      }
+    } catch (discordErr) {
+      console.error('Discord webhook error:', discordErr.message);
+    }
 
     res.status(201).json(event);
   } catch (error) {
@@ -35,7 +86,7 @@ export const createEvent = async (req, res) => {
 export const getEvents = async (req, res) => {
   try {
     const { search, type, eligibility, startDate, endDate, followed, trending } = req.query;
-    let query = { status: { $in: ['Draft', 'Published', 'Ongoing'] } };
+    let query = { status: { $in: ['Published', 'Ongoing'] } };
 
     if (search) {
       query.$or = [
@@ -103,7 +154,7 @@ export const getRecommendedEvents = async (req, res) => {
 
     // Get upcoming published/ongoing events
     const events = await Event.find({
-      status: { $in: ['Draft', 'Published', 'Ongoing'] },
+      status: { $in: ['Published', 'Ongoing'] },
       startDate: { $gte: new Date() }
     }).populate('organizer', 'name email category description');
 
@@ -132,8 +183,9 @@ export const getRecommendedEvents = async (req, res) => {
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score || new Date(a.event.startDate) - new Date(b.event.startDate));
 
-    // If fewer than 10 results, pad with popular upcoming events (by registrations)
-    if (results.length < 10) {
+    // Only pad with popular events if user has set preferences
+    const hasPreferences = userInterests.length > 0 || followedIds.length > 0;
+    if (hasPreferences && results.length < 10) {
       const existingIds = new Set(results.map(r => r.event._id.toString()));
       const filler = scored
         .filter(item => item.score === 0 && !existingIds.has(item.event._id.toString()))

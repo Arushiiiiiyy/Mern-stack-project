@@ -13,6 +13,7 @@ const EventManagePage = () => {
   const [search, setSearch] = useState('');
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [teams, setTeams] = useState([]);
 
   useEffect(() => {
     fetchEvent();
@@ -31,6 +32,12 @@ const EventManagePage = () => {
       });
       const { data: regs } = await API.get(`/events/${id}/registrations`);
       setRegistrations(regs);
+      if (ev.isTeamEvent) {
+        try {
+          const { data: t } = await API.get(`/teams/event/${id}`);
+          setTeams(t);
+        } catch (e) { /* ignore */ }
+      }
     } catch (err) { console.error(err); }
     setLoading(false);
   };
@@ -99,6 +106,7 @@ const EventManagePage = () => {
     { key: 'details', label: '📝 Details' },
     { key: 'participants', label: `👥 Participants (${registrations.length})` },
     ...(event.type === 'Merchandise' ? [{ key: 'payments', label: `💳 Payments (${pendingPayments.length})` }] : []),
+    ...(event.isTeamEvent ? [{ key: 'teams', label: `🏆 Teams (${teams.length})` }] : []),
   ];
 
   const isLocked = (event.registeredCount || 0) > 0;
@@ -258,6 +266,57 @@ const EventManagePage = () => {
                         background: reg.statuses === 'Confirmed' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
                         color: reg.statuses === 'Confirmed' ? '#22c55e' : '#f59e0b'
                       }}>{reg.statuses}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Teams Tab (Team events only) */}
+        {tab === 'teams' && (
+          <div>
+            <h3 style={{ marginBottom: '1rem', fontWeight: 700 }}>🏆 Teams ({teams.length})</h3>
+            {teams.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px' }}>
+                <p style={{ color: '#666' }}>No teams formed yet</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {teams.map(team => (
+                  <div key={team._id} style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '16px', padding: '20px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h4 style={{ fontWeight: 700, margin: 0 }}>{team.name}</h4>
+                        <span style={{
+                          padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 600,
+                          background: team.status === 'Complete' ? 'rgba(34,197,94,0.15)' : team.status === 'Cancelled' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+                          color: team.status === 'Complete' ? '#22c55e' : team.status === 'Cancelled' ? '#ef4444' : '#f59e0b'
+                        }}>{team.status}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: '#888', fontSize: '0.85rem' }}>
+                          {team.members?.filter(m => m.status === 'Accepted').length || 0}/{team.teamSize} members
+                        </span>
+                        <span style={{ color: '#555', fontSize: '0.75rem', fontFamily: 'monospace' }}>Code: {team.inviteCode}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {team.members?.map((m, i) => (
+                        <span key={i} style={{
+                          padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem',
+                          background: m.status === 'Accepted' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)',
+                          border: `1px solid ${m.status === 'Accepted' ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.1)'}`,
+                          color: m.status === 'Accepted' ? '#22c55e' : '#888'
+                        }}>
+                          {m.user?.name || 'Unknown'}
+                          {team.leader?._id === (m.user?._id || m.user) && ' 👑'}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 ))}

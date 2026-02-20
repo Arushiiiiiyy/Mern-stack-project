@@ -10,6 +10,7 @@ const SignUpPage = () => {
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     contactNumber: '',
     participantType: '',
     college: '',
@@ -22,8 +23,16 @@ const SignUpPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.password || !formData.contactNumber || !formData.participantType || !formData.college) {
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword || !formData.contactNumber || !formData.participantType || !formData.college) {
       alert('Please fill in all required fields');
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+    if (formData.password.length < 6) {
+      alert('Password must be at least 6 characters');
       return;
     }
     if (formData.participantType === 'IIIT' && !formData.email.endsWith('iiit.ac.in')) {
@@ -56,6 +65,7 @@ const SignUpPage = () => {
           <input name="name" placeholder="Full Name *" onChange={handleChange} required />
           <input type="email" name="email" placeholder="Email *" onChange={handleChange} required />
           <input type="password" name="password" placeholder="Password *" onChange={handleChange} required />
+          <input type="password" name="confirmPassword" placeholder="Confirm Password *" onChange={handleChange} required />
           <input name="contactNumber" placeholder="Contact Number *" onChange={handleChange} required />
           <select name="participantType" value={formData.participantType} onChange={handleChange} required>
             <option value="" disabled>Select Participant Type *</option>

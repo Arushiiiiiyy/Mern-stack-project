@@ -18,6 +18,12 @@ const EventDetailPage = () => {
   const [message, setMessage] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
   const [showForum, setShowForum] = useState(false);
+  const [teamName, setTeamName] = useState('');
+  const [teamSize, setTeamSize] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [myTeam, setMyTeam] = useState(null);
+  const [creatingTeam, setCreatingTeam] = useState(false);
+  const [joiningTeam, setJoiningTeam] = useState(false);
   const role = localStorage.getItem('role');
 
   useEffect(() => {
@@ -32,6 +38,13 @@ const EventDetailPage = () => {
             const regs = await API.get('/registrations/my-registrations');
             const found = regs.data.find(r => r.event?._id === id && r.statuses !== 'Cancelled');
             if (found) setIsRegistered(true);
+          } catch (e) { /* ignore */ }
+
+          // Check for existing team
+          try {
+            const teamsRes = await API.get('/teams/my-teams');
+            const eventTeam = teamsRes.data.find(t => (t.event?._id || t.event) === id && t.status !== 'Cancelled');
+            if (eventTeam) setMyTeam(eventTeam);
           } catch (e) { /* ignore */ }
         }
       } catch (err) {
@@ -105,6 +118,56 @@ const EventDetailPage = () => {
   const deadlinePassed = new Date() > new Date(event.registrationDeadline);
   const isFull = event.registeredCount >= event.limit;
   const canRegister = role === 'participant' && !deadlinePassed && !isFull && !isRegistered;
+  const isTeamEvent = event.isTeamEvent;
+
+  const handleCreateTeam = async () => {
+    if (!teamName.trim() || !teamSize) return;
+    setCreatingTeam(true);
+    try {
+      const { data } = await API.post('/teams', { eventId: id, name: teamName, teamSize: parseInt(teamSize) });
+      setMyTeam(data);
+      setMessage('Team created! Share the invite code with your teammates.');
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Failed to create team');
+    }
+    setCreatingTeam(false);
+  };
+
+  const handleJoinTeam = async () => {
+    if (!joinCode.trim()) return;
+    setJoiningTeam(true);
+    try {
+      const { data } = await API.post('/teams/join', { inviteCode: joinCode.trim() });
+      setMyTeam(data);
+      setMessage(data.status === 'Complete' ? 'Team complete! Tickets generated for all members.' : 'Joined team successfully!');
+      if (data.status === 'Complete') setIsRegistered(true);
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Failed to join team');
+    }
+    setJoiningTeam(false);
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!window.confirm('Leave this team?')) return;
+    try {
+      await API.put(`/teams/${myTeam._id}/leave`);
+      setMyTeam(null);
+      setMessage('You left the team.');
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Failed');
+    }
+  };
+
+  const handleCancelTeam = async () => {
+    if (!window.confirm('Cancel this team? All members will be removed.')) return;
+    try {
+      await API.delete(`/teams/${myTeam._id}`);
+      setMyTeam(null);
+      setMessage('Team cancelled.');
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Failed');
+    }
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0c', color: '#fff' }}>
@@ -265,10 +328,149 @@ const EventDetailPage = () => {
           {message && (
             <div style={{
               padding: '12px 16px', borderRadius: '12px', marginBottom: '16px',
-              background: message.includes('successful') ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-              border: `1px solid ${message.includes('successful') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-              color: message.includes('successful') ? '#22c55e' : '#ef4444'
+              background: message.includes('successful') || message.includes('created') || message.includes('Joined') || message.includes('complete') ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+              border: `1px solid ${message.includes('successful') || message.includes('created') || message.includes('Joined') || message.includes('complete') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              color: message.includes('successful') || message.includes('created') || message.includes('Joined') || message.includes('complete') ? '#22c55e' : '#ef4444'
             }}>{message}</div>
+          )}
+
+          {/* Team Event Section */}
+          {isTeamEvent && role === 'participant' && !deadlinePassed && !isFull && (
+            <div style={{ marginBottom: '2rem' }}>
+              {myTeam ? (
+                <div style={{
+                  background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)',
+                  borderRadius: '20px', padding: '24px'
+                }}>
+                  <h3 style={{ fontWeight: 700, marginBottom: '12px' }}>👥 Your Team: {myTeam.name}</h3>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    <span style={{
+                      padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600,
+                      background: myTeam.status === 'Complete' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                      color: myTeam.status === 'Complete' ? '#22c55e' : '#f59e0b'
+                    }}>{myTeam.status}</span>
+                    <span style={{ color: '#888', fontSize: '0.85rem' }}>
+                      {myTeam.members?.filter(m => m.status === 'Accepted').length || 0} / {myTeam.teamSize} members
+                    </span>
+                  </div>
+
+                  {/* Invite Code */}
+                  {myTeam.status === 'Forming' && (
+                    <div style={{
+                      padding: '16px', background: 'rgba(59,130,246,0.1)',
+                      border: '1px solid rgba(59,130,246,0.2)', borderRadius: '14px',
+                      textAlign: 'center', marginBottom: '16px'
+                    }}>
+                      <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: '6px' }}>Share this invite code with teammates</p>
+                      <p style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '4px', color: '#3b82f6' }}>{myTeam.inviteCode}</p>
+                      <button onClick={() => { navigator.clipboard.writeText(myTeam.inviteCode); setMessage('Invite code copied!'); }}
+                        style={{
+                          marginTop: '8px', padding: '6px 16px', background: 'rgba(59,130,246,0.2)',
+                          border: '1px solid rgba(59,130,246,0.3)', borderRadius: '8px',
+                          color: '#3b82f6', cursor: 'pointer', fontSize: '0.8rem'
+                        }}>📋 Copy Code</button>
+                    </div>
+                  )}
+
+                  {/* Members list */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+                    {myTeam.members?.map((m, i) => (
+                      <div key={i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
+                        borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)'
+                      }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                          {m.user?.name || 'Unknown'}
+                          {myTeam.leader?._id === (m.user?._id || m.user) && ' 👑'}
+                        </span>
+                        <span style={{
+                          padding: '2px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600,
+                          background: m.status === 'Accepted' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                          color: m.status === 'Accepted' ? '#22c55e' : '#f59e0b'
+                        }}>{m.status}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Team actions */}
+                  {myTeam.status === 'Forming' && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {myTeam.leader?._id === localStorage.getItem('userId') || myTeam.leader?._id ? (
+                        <button onClick={handleCancelTeam} style={{
+                          padding: '8px 16px', background: 'rgba(239,68,68,0.1)',
+                          border: '1px solid rgba(239,68,68,0.2)', borderRadius: '10px',
+                          color: '#ef4444', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem'
+                        }}>Cancel Team</button>
+                      ) : null}
+                      <button onClick={handleLeaveTeam} style={{
+                        padding: '8px 16px', background: 'rgba(245,158,11,0.1)',
+                        border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px',
+                        color: '#f59e0b', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem'
+                      }}>Leave Team</button>
+                    </div>
+                  )}
+
+                  {myTeam.status === 'Complete' && (
+                    <div style={{ padding: '12px', background: 'rgba(34,197,94,0.1)', borderRadius: '12px', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', fontWeight: 600 }}>
+                      ✅ Team complete! Tickets have been generated for all members.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Create or Join Team */
+                <div style={{
+                  background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)',
+                  borderRadius: '20px', padding: '24px'
+                }}>
+                  <h3 style={{ fontWeight: 700, marginBottom: '6px' }}>👥 Team Registration</h3>
+                  <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '20px' }}>
+                    This is a team event. Create a new team or join an existing one using an invite code.
+                    Team size: {event.minTeamSize}–{event.maxTeamSize} members.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    {/* Create Team */}
+                    <div style={{
+                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '16px', padding: '20px'
+                    }}>
+                      <h4 style={{ fontWeight: 700, marginBottom: '12px', color: '#a855f7' }}>Create a Team</h4>
+                      <input placeholder="Team Name" value={teamName} onChange={e => setTeamName(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', marginBottom: '10px', boxSizing: 'border-box' }} />
+                      <input type="number" placeholder={`Team Size (${event.minTeamSize}-${event.maxTeamSize})`}
+                        value={teamSize} onChange={e => setTeamSize(e.target.value)}
+                        min={event.minTeamSize} max={event.maxTeamSize}
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
+                      <button onClick={handleCreateTeam} disabled={creatingTeam || !teamName.trim() || !teamSize}
+                        style={{
+                          width: '100%', padding: '12px',
+                          background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+                          border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700,
+                          cursor: 'pointer', opacity: (!teamName.trim() || !teamSize) ? 0.5 : 1
+                        }}>{creatingTeam ? 'Creating...' : 'Create Team'}</button>
+                    </div>
+
+                    {/* Join Team */}
+                    <div style={{
+                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '16px', padding: '20px'
+                    }}>
+                      <h4 style={{ fontWeight: 700, marginBottom: '12px', color: '#3b82f6' }}>Join a Team</h4>
+                      <input placeholder="Enter invite code" value={joinCode} onChange={e => setJoinCode(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
+                      <button onClick={handleJoinTeam} disabled={joiningTeam || !joinCode.trim()}
+                        style={{
+                          width: '100%', padding: '12px',
+                          background: '#3b82f6',
+                          border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700,
+                          cursor: 'pointer', opacity: !joinCode.trim() ? 0.5 : 1
+                        }}>{joiningTeam ? 'Joining...' : 'Join Team'}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {isRegistered ? (
@@ -284,18 +486,20 @@ const EventDetailPage = () => {
               🚫 Event is full
             </div>
           ) : role === 'participant' ? (
-            <button
-              onClick={handleRegister}
-              disabled={registering}
-              style={{
-                width: '100%', padding: '16px', background: '#3b82f6',
-                border: 'none', borderRadius: '12px', color: '#fff',
-                fontWeight: 700, fontSize: '1.1rem', cursor: 'pointer',
-                opacity: registering ? 0.6 : 1
-              }}
-            >
-              {registering ? 'Registering...' : event.type === 'Merchandise' ? `Purchase — ₹${event.price}` : 'Register Now'}
-            </button>
+            !isTeamEvent && (
+              <button
+                onClick={handleRegister}
+                disabled={registering}
+                style={{
+                  width: '100%', padding: '16px', background: '#3b82f6',
+                  border: 'none', borderRadius: '12px', color: '#fff',
+                  fontWeight: 700, fontSize: '1.1rem', cursor: 'pointer',
+                  opacity: registering ? 0.6 : 1
+                }}
+              >
+                {registering ? 'Registering...' : event.type === 'Merchandise' ? `Purchase — ₹${event.price}` : 'Register Now'}
+              </button>
+            )
           ) : null}
         </div>
 

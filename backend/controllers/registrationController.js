@@ -63,19 +63,17 @@ export const registerForEvent = async (req, res) => {
             paymentProof: req.body.paymentProof || null
         });
 
-        // 8. Increment Event Count (for normal events immediately, merch on approval)
-        if (event.type !== 'Merchandise') {
-            event.registeredCount += 1;
-            await event.save();
+        // 8. Increment Event Count immediately for all event types
+        event.registeredCount += 1;
+        await event.save();
 
-            // Broadcast live capacity update via Socket.io
-            const io = req.app.get('io');
-            if (io) {
-                io.to(`event-${event._id.toString()}`).emit('capacityUpdate', {
-                    eventId: event._id.toString(),
-                    registeredCount: event.registeredCount
-                });
-            }
+        // Broadcast live capacity update via Socket.io
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`event-${event._id.toString()}`).emit('capacityUpdate', {
+                eventId: event._id.toString(),
+                registeredCount: event.registeredCount
+            });
         }
 
         // 9. Generate QR for confirmed registrations
@@ -228,17 +226,7 @@ export const approvePayment = async (req, res) => {
 
         if (action === 'approve') {
             registration.statuses = 'Confirmed';
-            event.registeredCount += 1;
-            await event.save();
-
-            // Broadcast live capacity update
-            const io = req.app.get('io');
-            if (io) {
-                io.to(`event-${event._id.toString()}`).emit('capacityUpdate', {
-                    eventId: event._id.toString(),
-                    registeredCount: event.registeredCount
-                });
-            }
+            // Count already incremented at registration time — no double count
 
             // Generate QR
             const qrDataUrl = await QRCode.toDataURL(JSON.stringify({
@@ -261,6 +249,18 @@ export const approvePayment = async (req, res) => {
             return res.json({ message: 'Payment approved', registration, qrCode: qrDataUrl });
         } else if (action === 'reject') {
             registration.statuses = 'Rejected';
+            // Decrement count since it was incremented at registration
+            event.registeredCount = Math.max(0, event.registeredCount - 1);
+            await event.save();
+
+            const io = req.app.get('io');
+            if (io) {
+                io.to(`event-${event._id.toString()}`).emit('capacityUpdate', {
+                    eventId: event._id.toString(),
+                    registeredCount: event.registeredCount
+                });
+            }
+
             await registration.save();
             return res.json({ message: 'Payment rejected', registration });
         }

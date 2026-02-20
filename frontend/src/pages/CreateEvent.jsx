@@ -18,7 +18,10 @@ const CreateEvent = () => {
     price: '0',
     tags: '',
     eligibility: 'All',
-    status: 'Draft'
+    status: 'Published',
+    isTeamEvent: false,
+    minTeamSize: '2',
+    maxTeamSize: '4'
   });
 
   const handleChange = (e) => {
@@ -28,6 +31,21 @@ const CreateEvent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Date validation
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    const regDeadline = new Date(formData.registrationDeadline);
+
+    if (end <= start) {
+      setError('End date/time must be after start date/time.');
+      return;
+    }
+    if (regDeadline >= start) {
+      setError('Registration deadline must be before the event start date/time.');
+      return;
+    }
+
     try {
       const payload = {
         ...formData,
@@ -158,6 +176,48 @@ const CreateEvent = () => {
             </div>
           </div>
 
+          {/* Hackathon / Team Event */}
+          {formData.type === 'Normal' && (
+            <div style={sectionStyle}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: '#ddd' }}>Team Registration (Hackathon)</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <label style={{ ...labelStyle, margin: 0 }}>Enable Team Registration</label>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, isTeamEvent: !formData.isTeamEvent })}
+                  style={{
+                    width: '52px', height: '28px', borderRadius: '14px', border: 'none',
+                    background: formData.isTeamEvent ? '#3b82f6' : 'rgba(255,255,255,0.1)',
+                    cursor: 'pointer', position: 'relative', transition: 'background 0.2s'
+                  }}
+                >
+                  <div style={{
+                    width: '22px', height: '22px', borderRadius: '50%', background: '#fff',
+                    position: 'absolute', top: '3px',
+                    left: formData.isTeamEvent ? '27px' : '3px', transition: 'left 0.2s'
+                  }} />
+                </button>
+              </div>
+              {formData.isTeamEvent && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={labelStyle}>Min Team Size</label>
+                    <input type="number" name="minTeamSize" value={formData.minTeamSize} onChange={handleChange} min="2" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Max Team Size</label>
+                    <input type="number" name="maxTeamSize" value={formData.maxTeamSize} onChange={handleChange} min="2" style={inputStyle} />
+                  </div>
+                </div>
+              )}
+              {formData.isTeamEvent && (
+                <p style={{ color: '#888', fontSize: '0.8rem', marginTop: '12px' }}>
+                  Participants will form teams with invite codes. Registration is only complete when the team has the required number of accepted members.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Submit */}
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -167,8 +227,8 @@ const CreateEvent = () => {
             <div>
               <label style={labelStyle}>Publish Status</label>
               <select name="status" onChange={handleChange} style={{ ...inputStyle, width: 'auto', minWidth: '180px' }}>
-                <option value="Draft">Save as Draft</option>
                 <option value="Published">Publish Immediately</option>
+                <option value="Draft">Save as Draft</option>
               </select>
             </div>
             <button type="submit" style={{

@@ -38,7 +38,11 @@ export const createTeam = async (req, res) => {
       members: [{ user: req.user._id, status: 'Accepted' }]
     });
 
-    res.status(201).json(team);
+    const populated = await Team.findById(team._id)
+      .populate('event', 'name startDate endDate venue')
+      .populate('leader', 'name email')
+      .populate('members.user', 'name email');
+    res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -118,7 +122,11 @@ export const joinTeam = async (req, res) => {
     }
 
     await team.save();
-    res.json(team);
+    const populated = await Team.findById(team._id)
+      .populate('event', 'name startDate endDate venue')
+      .populate('leader', 'name email')
+      .populate('members.user', 'name email');
+    res.json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -152,6 +160,68 @@ export const getTeamById = async (req, res) => {
       .populate('members.user', 'name email');
     if (!team) return res.status(404).json({ message: 'Team not found' });
     res.json(team);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Get all teams for a specific event (Organizer view)
+ * @route   GET /api/teams/event/:eventId
+ */
+export const getEventTeams = async (req, res) => {
+  try {
+    const teams = await Team.find({ event: req.params.eventId })
+      .populate('leader', 'name email')
+      .populate('members.user', 'name email')
+      .sort({ createdAt: -1 });
+    res.json(teams);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Leave a team (member only, not leader; only if Forming)
+ * @route   PUT /api/teams/:id/leave
+ */
+export const leaveTeam = async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (team.status !== 'Forming') return res.status(400).json({ message: 'Cannot leave a completed team' });
+    if (team.leader.toString() === req.user._id.toString()) {
+      return res.status(400).json({ message: 'Team leader cannot leave. Cancel the team instead.' });
+    }
+    team.members = team.members.filter(m => m.user.toString() !== req.user._id.toString());
+    await team.save();
+    const populated = await Team.findById(team._id)
+      .populate('event', 'name startDate endDate venue')
+      .populate('leader', 'name email')
+      .populate('members.user', 'name email');
+    res.json({ message: 'Left team successfully', team: populated });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Cancel a team (leader only, only if Forming)
+ * @route   DELETE /api/teams/:id
+ */
+export const cancelTeam = async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (team.leader.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Only the team leader can cancel the team' });
+    }
+    if (team.status !== 'Forming') {
+      return res.status(400).json({ message: 'Cannot cancel a completed team' });
+    }
+    team.status = 'Cancelled';
+    await team.save();
+    res.json({ message: 'Team cancelled', team });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

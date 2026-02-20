@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Event from '../models/Event.js';
 import crypto from 'crypto';
 
 // @desc    Add a new Club/Organizer
@@ -6,7 +7,20 @@ import crypto from 'crypto';
 // @access  Private (Admin only)
 export const addOrganizer = async (req, res) => {
   try {
-    const { name, email, category, description, contactNumber } = req.body;
+    const { name, category, description, contactNumber } = req.body;
+    let { email } = req.body;
+
+    // Auto-generate email if not provided
+    if (!email) {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20);
+      email = `${slug}@felicity.iiit.ac.in`;
+    }
+
+    // Check for duplicate organizer name
+    const nameExists = await User.findOne({ name: { $regex: `^${name.trim()}$`, $options: 'i' }, role: 'organizer' });
+    if (nameExists) {
+      return res.status(400).json({ message: 'A club/organizer with this name already exists.' });
+    }
 
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -58,19 +72,46 @@ export const getAllOrganizers = async (req, res) => {
 // @access  Private (Admin only)
 export const removeOrganizer = async (req, res) => {
   try {
-    const { action } = req.query; // 'disable' or 'delete'
+    const { action } = req.query; // 'disable', 'enable', 'archive', 'delete'
     const organizer = await User.findById(req.params.id);
     if (!organizer || organizer.role !== 'organizer') {
       return res.status(404).json({ message: 'Organizer not found' });
     }
 
     if (action === 'delete') {
+      // Permanently delete organizer and all their events
+      await Event.deleteMany({ organizer: req.params.id });
       await User.findByIdAndDelete(req.params.id);
-      return res.json({ message: 'Organizer permanently deleted' });
-    } else {
-      organizer.disabled = !organizer.disabled;
+      return res.json({ message: 'Organizer and all their events permanently deleted' });
+    } else if (action === 'archive') {
+      organizer.archived = true;
+      organizer.disabled = true;
       await organizer.save();
-      return res.json({ message: `Organizer ${organizer.disabled ? 'disabled' : 'enabled'}`, organizer });
+      // Store old statuses before closing so we can restore
+      await Event.updateMany(
+        { organizer: req.params.id, status: { $ne: 'Closed' } },
+        { status: 'Closed', previousStatus: 'Published' }
+      );
+      return res.json({ message: 'Organizer archived. Their events have been closed.', organizer });
+    } else if (action === 'unarchive') {
+      organizer.archived = false;
+      organizer.disabled = false;
+      await organizer.save();
+      // Restore events that were closed during archiving back to Published
+      await Event.updateMany(
+        { organizer: req.params.id, status: 'Closed' },
+        { status: 'Published' }
+      );
+      return res.json({ message: 'Organizer unarchived. Their events have been restored.', organizer });
+    } else if (action === 'enable') {
+      organizer.disabled = false;
+      await organizer.save();
+      return res.json({ message: 'Organizer re-enabled', organizer });
+    } else {
+      // Default: disable (events remain visible, club cannot login)
+      organizer.disabled = true;
+      await organizer.save();
+      return res.json({ message: 'Organizer disabled. Events remain visible.', organizer });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });

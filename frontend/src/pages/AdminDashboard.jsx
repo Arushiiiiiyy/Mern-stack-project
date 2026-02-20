@@ -12,7 +12,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(null);
-  const [addForm, setAddForm] = useState({ name: '', email: '', password: '', category: '' });
+  const [addForm, setAddForm] = useState({ name: '', email: '', category: '', description: '' });
 
   useEffect(() => {
     setTab(location.pathname.includes('password-resets') ? 'password-resets' : 'organizers');
@@ -41,7 +41,7 @@ const AdminDashboard = () => {
     try {
       const { data } = await API.post('/admin/organizers', addForm);
       setShowAddModal(false);
-      setAddForm({ name: '', email: '', password: '', category: '' });
+      setAddForm({ name: '', email: '', category: '', description: '' });
       setShowPasswordModal({
         name: data.organizer?.name || addForm.name,
         email: data.organizer?.email || addForm.email,
@@ -54,10 +54,17 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleRemoveOrganizer = async (id) => {
-    if (!window.confirm('Remove this organizer?')) return;
+  const handleOrgAction = async (id, action) => {
+    const messages = {
+      disable: 'Disable this organizer? They won\'t be able to login but their events remain visible.',
+      enable: 'Re-enable this organizer?',
+      unarchive: 'Unarchive this organizer? They will be able to login again and their events will be restored.',
+      archive: 'Archive this organizer? They won\'t be able to login and their events will be closed.',
+      delete: 'PERMANENTLY DELETE this organizer and ALL their events? This cannot be undone!'
+    };
+    if (!window.confirm(messages[action])) return;
     try {
-      await API.delete(`/admin/organizers/${id}`);
+      await API.delete(`/admin/organizers/${id}?action=${action}`);
       fetchData();
     } catch (err) { alert(err.response?.data?.message || 'Failed'); }
   };
@@ -140,14 +147,43 @@ const AdminDashboard = () => {
                       <div>
                         <h3 style={{ fontWeight: 700, fontSize: '1.05rem', color: '#eee', marginBottom: '3px' }}>{org.name}</h3>
                         <p style={{ color: '#aaa', fontSize: '0.85rem' }}>{org.email} • {org.category || 'General'}</p>
-                        {org.disabled && <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 600 }}>● Disabled</span>}
+                        {org.disabled && !org.archived && <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 600 }}>● Disabled</span>}
+                        {org.archived && <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600 }}>● Archived</span>}
                       </div>
                     </div>
-                    <button onClick={() => handleRemoveOrganizer(org._id)} style={{
-                      padding: '8px 18px', background: 'rgba(239,68,68,0.12)',
-                      border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px',
-                      color: '#f87171', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem'
-                    }}>Remove</button>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {org.archived ? (
+                        <button onClick={() => handleOrgAction(org._id, 'unarchive')} style={{
+                          padding: '6px 14px', background: 'rgba(34,197,94,0.12)',
+                          border: '1px solid rgba(34,197,94,0.25)', borderRadius: '8px',
+                          color: '#4ade80', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem'
+                        }}>Unarchive</button>
+                      ) : org.disabled ? (
+                        <button onClick={() => handleOrgAction(org._id, 'enable')} style={{
+                          padding: '6px 14px', background: 'rgba(34,197,94,0.12)',
+                          border: '1px solid rgba(34,197,94,0.25)', borderRadius: '8px',
+                          color: '#4ade80', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem'
+                        }}>Enable</button>
+                      ) : (
+                        <>
+                          <button onClick={() => handleOrgAction(org._id, 'disable')} style={{
+                            padding: '6px 14px', background: 'rgba(245,158,11,0.12)',
+                            border: '1px solid rgba(245,158,11,0.25)', borderRadius: '8px',
+                            color: '#f59e0b', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem'
+                          }}>Disable</button>
+                          <button onClick={() => handleOrgAction(org._id, 'archive')} style={{
+                            padding: '6px 14px', background: 'rgba(59,130,246,0.12)',
+                            border: '1px solid rgba(59,130,246,0.25)', borderRadius: '8px',
+                            color: '#60a5fa', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem'
+                          }}>Archive</button>
+                        </>
+                      )}
+                      <button onClick={() => handleOrgAction(org._id, 'delete')} style={{
+                        padding: '6px 14px', background: 'rgba(239,68,68,0.12)',
+                        border: '1px solid rgba(239,68,68,0.25)', borderRadius: '8px',
+                        color: '#f87171', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem'
+                      }}>Delete</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -224,9 +260,17 @@ const AdminDashboard = () => {
               <p style={{ color: '#999', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Create a new club/organizer account</p>
               <form onSubmit={handleAddOrganizer} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <input placeholder="Club Name" value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} style={inputStyle} required />
-                <input placeholder="Email" type="email" value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} style={inputStyle} required />
-                <input placeholder="Password" type="password" value={addForm.password} onChange={e => setAddForm({ ...addForm, password: e.target.value })} style={inputStyle} required />
+                <input placeholder="Email (auto-generated if empty)" type="email" value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} style={inputStyle} />
+                {!addForm.email && addForm.name && (
+                  <p style={{ color: '#888', fontSize: '0.8rem', marginTop: '6px' }}>
+                    Auto: <span style={{ color: '#a78bfa' }}>{addForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20)}@felicity.iiit.ac.in</span>
+                  </p>
+                )}
+                <div style={{ padding: '12px 16px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', color: '#4ade80', fontSize: '0.85rem' }}>
+                  🔐 Password will be auto-generated and shown after creation
+                </div>
                 <input placeholder="Category (e.g., Cultural, Technical)" value={addForm.category} onChange={e => setAddForm({ ...addForm, category: e.target.value })} style={inputStyle} />
+                <input placeholder="Description (optional)" value={addForm.description} onChange={e => setAddForm({ ...addForm, description: e.target.value })} style={inputStyle} />
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                   <button type="button" onClick={() => setShowAddModal(false)} style={{
                     flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)',

@@ -34,7 +34,7 @@ export const postMessage = async (req, res) => {
       const registration = await Registration.findOne({
         participant: req.user._id,
         event: req.params.eventId,
-        statuses: 'Confirmed'
+        statuses: { $in: ['Confirmed', 'Pending'] }
       });
       if (!registration) return res.status(403).json({ message: 'Only registered participants can post' });
     }

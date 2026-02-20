@@ -50,7 +50,8 @@ const userSchema=new mongoose.Schema({
     //organizer extra fields
     contactEmail:{type:String},
     discordWebhook:{type:String},
-    disabled:{type:Boolean,default:false}
+    disabled:{type:Boolean,default:false},
+    archived:{type:Boolean,default:false}
 },{timestamps:true});
 //pre is used to perform a function before saving lol 
 userSchema.pre('save',async function(){

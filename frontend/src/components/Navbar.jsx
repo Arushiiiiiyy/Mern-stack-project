@@ -34,6 +34,7 @@ const Navbar = () => {
             <Link to="/participant-dashboard" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Dashboard</Link>
             <Link to="/events" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Browse Events</Link>
             <Link to="/clubs" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Clubs</Link>
+            <Link to="/teams/browse" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Teams</Link>
             <Link to="/profile" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Profile</Link>
           </>
         )}

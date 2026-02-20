@@ -57,6 +57,12 @@ export const loginUser=async(req,res)=>{
     try{
         const user=await User.findOne({email});
         if(user&& (await user.matchPassword(password))){
+            if(user.disabled){
+                return res.status(403).json({message:'Your account has been disabled. Contact the administrator.'});
+            }
+            if(user.archived){
+                return res.status(403).json({message:'Your account has been archived. Contact the administrator.'});
+            }
             res.json({
                 _id:user._id,
                 name:user.name,

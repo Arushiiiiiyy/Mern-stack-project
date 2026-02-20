@@ -2,11 +2,19 @@ import React, { useState, useEffect } from 'react';
 import API from '../api';
 import Navbar from '../components/Navbar';
 
+const INTEREST_OPTIONS = [
+  'Music', 'Dance', 'Drama', 'Art', 'Photography',
+  'Coding', 'Hackathons', 'Robotics', 'AI/ML', 'Web Dev',
+  'Sports', 'Fitness', 'E-Sports', 'Gaming',
+  'Literature', 'Debating', 'Quiz', 'Public Speaking',
+  'Entrepreneurship', 'Finance', 'Social Service', 'Environment'
+];
+
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [resetReason, setResetReason] = useState('');
   const [message, setMessage] = useState('');
@@ -49,11 +57,19 @@ const ProfilePage = () => {
   };
 
   const handlePasswordChange = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      alert('Password must be at least 6 characters');
+      return;
+    }
     try {
       await API.put('/users/change-password', passwordForm);
       setMessage('Password changed!');
       setShowPasswordChange(false);
-      setPasswordForm({ currentPassword: '', newPassword: '' });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to change password');
@@ -142,9 +158,45 @@ const ProfilePage = () => {
                 </div>
                 <div>
                   <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>Interests</label>
-                  {editing ? <input value={Array.isArray(form.interests) ? form.interests.join(', ') : (form.interests || '')}
-                    onChange={(e) => setForm({ ...form, interests: e.target.value })} style={inputStyle} placeholder="comma separated" />
-                    : <p>{profile.interests?.join(', ') || '—'}</p>}
+                  {editing ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {INTEREST_OPTIONS.map(interest => {
+                        const selected = (Array.isArray(form.interests) ? form.interests : []).includes(interest);
+                        return (
+                          <button
+                            key={interest}
+                            type="button"
+                            onClick={() => {
+                              const current = Array.isArray(form.interests) ? form.interests : [];
+                              setForm({
+                                ...form,
+                                interests: selected ? current.filter(i => i !== interest) : [...current, interest]
+                              });
+                            }}
+                            style={{
+                              padding: '8px 16px', borderRadius: '20px', cursor: 'pointer',
+                              fontWeight: 600, fontSize: '0.85rem',
+                              border: selected ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                              background: selected ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
+                              color: selected ? '#60a5fa' : '#aaa'
+                            }}
+                          >
+                            {selected ? '✓ ' : ''}{interest}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {profile.interests?.length > 0 ? profile.interests.map(i => (
+                        <span key={i} style={{
+                          padding: '4px 12px', borderRadius: '16px', fontSize: '0.85rem',
+                          background: 'rgba(59,130,246,0.1)', color: '#3b82f6',
+                          border: '1px solid rgba(59,130,246,0.2)'
+                        }}>{i}</span>
+                      )) : <p style={{ color: '#666' }}>—</p>}
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -208,6 +260,8 @@ const ProfilePage = () => {
                     onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} style={inputStyle} />
                   <input type="password" placeholder="New Password" value={passwordForm.newPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} style={inputStyle} />
+                  <input type="password" placeholder="Confirm New Password" value={passwordForm.confirmNewPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })} style={inputStyle} />
                   <button onClick={handlePasswordChange} style={{
                     padding: '12px', background: '#f59e0b', border: 'none', borderRadius: '10px',
                     color: '#000', fontWeight: 700, cursor: 'pointer', maxWidth: '200px'

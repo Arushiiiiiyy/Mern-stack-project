@@ -13,6 +13,7 @@ const TeamPage = () => {
   const [joining, setJoining] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [myTeams, setMyTeams] = useState([]);
+  const [message, setMessage] = useState('');
 
   // If id is 'browse', show join/create UI
   const isBrowse = id === 'browse';
@@ -47,12 +48,36 @@ const TeamPage = () => {
     try {
       const { data } = await API.post('/teams/join', { inviteCode: joinCode.trim() });
       alert(data.message || 'Joined successfully!');
-      if (data.team?._id) navigate(`/teams/${data.team._id}`);
+      if (data._id) navigate(`/teams/${data._id}`);
       else fetchMyTeams();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to join');
     }
     setJoining(false);
+  };
+
+  const handleLeaveTeam = async (teamId) => {
+    if (!window.confirm('Leave this team?')) return;
+    try {
+      await API.put(`/teams/${teamId}/leave`);
+      setMessage('You left the team.');
+      if (isBrowse) fetchMyTeams();
+      else navigate('/teams/browse');
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Failed');
+    }
+  };
+
+  const handleCancelTeam = async (teamId) => {
+    if (!window.confirm('Cancel this team? All members will be removed.')) return;
+    try {
+      await API.delete(`/teams/${teamId}`);
+      setMessage('Team cancelled.');
+      if (isBrowse) fetchMyTeams();
+      else navigate('/teams/browse');
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Failed');
+    }
   };
 
   const inputStyle = {
@@ -72,6 +97,13 @@ const TeamPage = () => {
       <Navbar />
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1.5rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '2rem' }}>Hackathon Teams</h1>
+
+        {message && (
+          <div style={{
+            padding: '12px 16px', borderRadius: '12px', marginBottom: '16px',
+            background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#3b82f6'
+          }}>{message}</div>
+        )}
 
         {/* Join a Team */}
         <div style={{
@@ -110,8 +142,8 @@ const TeamPage = () => {
                 </div>
                 <span style={{
                   padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600,
-                  background: t.status === 'Complete' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
-                  color: t.status === 'Complete' ? '#22c55e' : '#f59e0b'
+                  background: t.status === 'Complete' ? 'rgba(34,197,94,0.15)' : t.status === 'Cancelled' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+                  color: t.status === 'Complete' ? '#22c55e' : t.status === 'Cancelled' ? '#ef4444' : '#f59e0b'
                 }}>{t.status}</span>
               </div>
             ))}
@@ -182,12 +214,38 @@ const TeamPage = () => {
                 padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 600,
                 background: m.status === 'Accepted' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
                 color: m.status === 'Accepted' ? '#22c55e' : '#f59e0b'
-              }}>
-                {team.leader === m.user?._id ? '👑 Leader' : m.status}
+              }}>👑 Leader • {m.status}
               </span>
             </div>
           ))}
         </div>
+
+        {/* Team Actions */}
+        {team.status === 'Forming' && (
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '2rem' }}>
+            {team.leader === localStorage.getItem('userId') && (
+              <button onClick={() => handleCancelTeam(team._id)} style={{
+                padding: '10px 20px', background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.2)', borderRadius: '10px',
+                color: '#ef4444', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem'
+              }}>Cancel Team</button>
+            )}
+            {team.leader !== localStorage.getItem('userId') && (
+              <button onClick={() => handleLeaveTeam(team._id)} style={{
+                padding: '10px 20px', background: 'rgba(245,158,11,0.1)',
+                border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px',
+                color: '#f59e0b', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem'
+              }}>Leave Team</button>
+            )}
+          </div>
+        )}
+
+        {message && (
+          <div style={{
+            padding: '12px 16px', borderRadius: '12px', marginBottom: '16px',
+            background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#3b82f6'
+          }}>{message}</div>
+        )}
 
         {/* Tickets (for completed team) */}
         {team.status === 'Complete' && team.ticketIDs?.length > 0 && (
