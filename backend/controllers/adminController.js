@@ -17,7 +17,7 @@ export const addOrganizer = async (req, res) => {
     }
 
     // Check for duplicate organizer name
-    const nameExists = await User.findOne({ name: { $regex: `^${name.trim()}$`, $options: 'i' }, role: 'organizer' });
+    const nameExists = await User.findOne({ firstName: { $regex: `^${name.trim()}$`, $options: 'i' }, role: 'organizer' });
     if (nameExists) {
       return res.status(400).json({ message: 'A club/organizer with this name already exists.' });
     }
@@ -30,7 +30,8 @@ export const addOrganizer = async (req, res) => {
     const generatedPassword = crypto.randomBytes(4).toString('hex');
 
     const organizer = await User.create({
-      name,
+      firstName: name,
+      lastName: '',
       email,
       password: generatedPassword,
       role: 'organizer',

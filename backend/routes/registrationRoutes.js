@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerForEvent, getMyRegistrations, getTicketQR, cancelRegistration, uploadPaymentProof, approvePayment } from '../controllers/registrationController.js';
+import { registerForEvent, getMyRegistrations, getTicketQR, cancelRegistration, uploadPaymentProof, approvePayment, markAttendance } from '../controllers/registrationController.js';
 import { protect, organizerOnly } from '../middleware/authMiddleware.js';
 import multer from 'multer';
 
@@ -21,5 +21,6 @@ router.put('/:id/payment-proof', protect, upload.single('paymentProof'), uploadP
 
 // Organizer routes (merchandise approval)
 router.put('/:id/approve', protect, organizerOnly, approvePayment);
+router.put('/:id/attend', protect, organizerOnly, markAttendance);
 
 export default router;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
+import FormBuilder from '../components/FormBuilder';
 
 const EventManagePage = () => {
   const { id } = useParams();
@@ -14,6 +15,7 @@ const EventManagePage = () => {
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [teams, setTeams] = useState([]);
+  const [formFieldsEdit, setFormFieldsEdit] = useState([]);
 
   useEffect(() => {
     fetchEvent();
@@ -32,6 +34,13 @@ const EventManagePage = () => {
       });
       const { data: regs } = await API.get(`/events/${id}/registrations`);
       setRegistrations(regs);
+      // Initialize form fields for editing
+      setFormFieldsEdit((ev.formFields || []).map(f => ({
+        label: f.label,
+        fieldType: f.fieldType,
+        required: f.required,
+        options: f.option || f.options || []
+      })));
       if (ev.isTeamEvent) {
         try {
           const { data: t } = await API.get(`/teams/event/${id}`);
@@ -76,6 +85,13 @@ const EventManagePage = () => {
     } catch (err) { alert(err.response?.data?.message || 'Failed'); }
   };
 
+  const handleMarkAttendance = async (regId) => {
+    try {
+      await API.put(`/registrations/${regId}/attend`);
+      fetchEvent();
+    } catch (err) { alert(err.response?.data?.message || 'Failed to mark attendance'); }
+  };
+
   const filteredRegs = registrations.filter(r => {
     const name = r.participant?.name || '';
     const email = r.participant?.email || '';
@@ -104,8 +120,10 @@ const EventManagePage = () => {
 
   const tabs = [
     { key: 'details', label: '📝 Details' },
+    { key: 'formbuilder', label: '📋 Form Builder' },
     { key: 'participants', label: `👥 Participants (${registrations.length})` },
     ...(event.type === 'Merchandise' ? [{ key: 'payments', label: `💳 Payments (${pendingPayments.length})` }] : []),
+    ...(event.type === 'Merchandise' ? [{ key: 'inventory', label: '📦 Inventory' }] : []),
     ...(event.isTeamEvent ? [{ key: 'teams', label: `🏆 Teams (${teams.length})` }] : []),
   ];
 
@@ -229,6 +247,64 @@ const EventManagePage = () => {
           </div>
         )}
 
+        {/* Form Builder Tab */}
+        {tab === 'formbuilder' && (
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div>
+                <h3 style={{ fontWeight: 700, marginBottom: '4px' }}>📋 Registration Form Fields</h3>
+                <p style={{ color: '#666', fontSize: '0.85rem' }}>
+                  {isLocked
+                    ? 'Form cannot be edited — this event already has registrations.'
+                    : 'Define what information participants must provide when registering.'}
+                </p>
+              </div>
+            </div>
+
+            {isLocked && (
+              <div style={{
+                background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
+                borderRadius: '12px', padding: '12px 16px', marginBottom: '1.5rem',
+                display: 'flex', alignItems: 'center', gap: '10px'
+              }}>
+                <span style={{ fontSize: '1.2rem' }}>🔒</span>
+                <span style={{ color: '#f59e0b', fontSize: '0.9rem', fontWeight: 600 }}>
+                  Form fields are locked because {event.registeredCount} participant(s) have already registered.
+                </span>
+              </div>
+            )}
+
+            <FormBuilder fields={formFieldsEdit} onChange={setFormFieldsEdit} readOnly={isLocked} />
+
+            {!isLocked && (
+              <button onClick={async () => {
+                setSaving(true);
+                try {
+                  const payload = {
+                    formFields: formFieldsEdit.map(f => ({
+                      label: f.label,
+                      fieldType: f.fieldType,
+                      required: f.required,
+                      option: f.options || []
+                    }))
+                  };
+                  await API.put(`/events/${id}`, payload);
+                  alert('Form fields saved!');
+                  fetchEvent();
+                } catch (err) {
+                  alert(err.response?.data?.message || 'Failed to save form fields');
+                }
+                setSaving(false);
+              }} disabled={saving} style={{
+                marginTop: '20px', padding: '12px 32px',
+                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                border: 'none', borderRadius: '12px', color: '#fff',
+                fontWeight: 700, cursor: 'pointer', fontSize: '1rem'
+              }}>{saving ? 'Saving...' : 'Save Form Fields'}</button>
+            )}
+          </div>
+        )}
+
         {/* Participants Tab */}
         {tab === 'participants' && (
           <div>
@@ -266,6 +342,19 @@ const EventManagePage = () => {
                         background: reg.statuses === 'Confirmed' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
                         color: reg.statuses === 'Confirmed' ? '#22c55e' : '#f59e0b'
                       }}>{reg.statuses}</span>
+                      {reg.statuses === 'Confirmed' && !reg.attended && (
+                        <button onClick={() => handleMarkAttendance(reg._id)} style={{
+                          padding: '3px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600,
+                          background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
+                          color: '#3b82f6', cursor: 'pointer',
+                        }}>Mark Present</button>
+                      )}
+                      {reg.attended && (
+                        <span style={{
+                          padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 600,
+                          background: 'rgba(34,197,94,0.1)', color: '#22c55e',
+                        }}>✅ Present</span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -376,7 +465,53 @@ const EventManagePage = () => {
             )}
           </div>
         )}
-      </div>
+        {/* Inventory Tab (Merchandise only) */}
+        {tab === 'inventory' && (
+          <div>
+            <h3 style={{ marginBottom: '1rem', color: '#a855f7' }}>📦 Variant Inventory</h3>
+            {(!event.variants || event.variants.length === 0) ? (
+              <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px' }}>
+                <p style={{ color: '#666' }}>No variants configured for this merchandise event</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {event.variants.map((v, i) => (
+                  <div key={i} style={{
+                    background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)',
+                    borderRadius: '16px', padding: '20px',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <h4 style={{ fontWeight: 700, margin: 0, color: '#a855f7' }}>{v.name}</h4>
+                      <span style={{
+                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600,
+                        background: (v.stock || 0) > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                        color: (v.stock || 0) > 0 ? '#22c55e' : '#ef4444',
+                      }}>{v.stock ?? '∞'} in stock</span>
+                    </div>
+                    {v.options?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {v.options.map((opt, j) => (
+                          <span key={j} style={{
+                            padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem',
+                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                            color: '#ccc',
+                          }}>{opt}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {event.purchaseLimitPerUser && (
+              <div style={{
+                marginTop: '16px', padding: '12px 16px', borderRadius: '12px',
+                background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+                color: '#3b82f6', fontSize: '0.9rem',
+              }}>ℹ️ Purchase limit: {event.purchaseLimitPerUser} per user</div>
+            )}
+          </div>
+        )}      </div>
     </div>
   );
 };

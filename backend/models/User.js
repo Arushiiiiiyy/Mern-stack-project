@@ -1,9 +1,13 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 const userSchema=new mongoose.Schema({
-    name:{
+    firstName:{
         type:String,
         required:true
+    },
+    lastName:{
+        type:String,
+        default:''
     },
     email:{
         type:String,
@@ -53,6 +57,15 @@ const userSchema=new mongoose.Schema({
     disabled:{type:Boolean,default:false},
     archived:{type:Boolean,default:false}
 },{timestamps:true});
+
+// Virtual for full name
+userSchema.virtual('name').get(function() {
+    return `${this.firstName} ${this.lastName}`.trim();
+});
+
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
+
 //pre is used to perform a function before saving lol 
 userSchema.pre('save',async function(){
     if(!this.isModified('password')){

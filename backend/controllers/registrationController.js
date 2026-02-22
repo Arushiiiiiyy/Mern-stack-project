@@ -41,6 +41,28 @@ export const registerForEvent = async (req, res) => {
             }
         }
 
+        // 4b. Purchase limit check for merchandise events
+        if (event.type === 'Merchandise' && event.purchaseLimitPerUser) {
+            const existingPurchases = await Registration.countDocuments({
+                participant: req.user._id,
+                event: event._id,
+                statuses: { $nin: ['Cancelled', 'Rejected'] }
+            });
+            if (existingPurchases >= event.purchaseLimitPerUser) {
+                return res.status(400).json({ message: `Purchase limit reached (max ${event.purchaseLimitPerUser} per user)` });
+            }
+        }
+
+        // 4c. Stock check for merchandise variants
+        if (event.type === 'Merchandise' && req.body.selectedVariants?.length > 0) {
+            for (const sv of req.body.selectedVariants) {
+                const variant = event.variants?.find(v => v.name === sv.name);
+                if (variant && variant.stock !== undefined && variant.stock !== null && variant.stock <= 0) {
+                    return res.status(400).json({ message: `Variant "${sv.name}" is out of stock` });
+                }
+            }
+        }
+
         // 5. Generate Unique Ticket ID
         const ticketID = `FEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
@@ -65,6 +87,17 @@ export const registerForEvent = async (req, res) => {
 
         // 8. Increment Event Count immediately for all event types
         event.registeredCount += 1;
+
+        // Decrement variant stock for merchandise events
+        if (event.type === 'Merchandise' && req.body.selectedVariants?.length > 0) {
+            for (const sv of req.body.selectedVariants) {
+                const variant = event.variants?.find(v => v.name === sv.name);
+                if (variant && variant.stock !== undefined && variant.stock !== null) {
+                    variant.stock = Math.max(0, variant.stock - 1);
+                }
+            }
+        }
+
         await event.save();
 
         // Broadcast live capacity update via Socket.io
@@ -251,6 +284,17 @@ export const approvePayment = async (req, res) => {
             registration.statuses = 'Rejected';
             // Decrement count since it was incremented at registration
             event.registeredCount = Math.max(0, event.registeredCount - 1);
+
+            // Restore variant stock
+            if (registration.selectedVariants?.length > 0) {
+                for (const sv of registration.selectedVariants) {
+                    const variant = event.variants?.find(v => v.name === sv.name);
+                    if (variant && variant.stock !== undefined && variant.stock !== null) {
+                        variant.stock += 1;
+                    }
+                }
+            }
+
             await event.save();
 
             const io = req.app.get('io');
@@ -266,6 +310,35 @@ export const approvePayment = async (req, res) => {
         }
 
         res.status(400).json({ message: 'Invalid action' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * @desc    Mark a registration as attended (organizer action)
+ * @route   PUT /api/registrations/:id/attend
+ */
+export const markAttendance = async (req, res) => {
+    try {
+        const registration = await Registration.findById(req.params.id)
+            .populate('event');
+        if (!registration) return res.status(404).json({ message: 'Registration not found' });
+
+        const event = registration.event;
+        if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        if (registration.statuses !== 'Confirmed') {
+            return res.status(400).json({ message: 'Only confirmed registrations can be marked as attended' });
+        }
+
+        registration.attended = true;
+        registration.attendedAt = new Date();
+        await registration.save();
+
+        res.json({ message: 'Attendance marked', registration });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -42,6 +42,7 @@ const Navbar = () => {
         {role === 'organizer' && (
           <>
             <Link to="/organizer-dashboard" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Dashboard</Link>
+            <Link to="/events" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Ongoing Events</Link>
             <Link to="/create-event" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Create Event</Link>
             <Link to="/profile" style={{ color: '#ccc', textDecoration: 'none', fontSize: '0.9rem' }}>Profile</Link>
           </>

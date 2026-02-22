@@ -17,6 +17,7 @@ const ProfilePage = () => {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [resetReason, setResetReason] = useState('');
+  const [resetStatus, setResetStatus] = useState(null);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -25,6 +26,14 @@ const ProfilePage = () => {
         const { data } = await API.get('/users/profile');
         setProfile(data);
         setForm(data);
+        // Fetch password reset status for organizers
+        if (data.resetPasswordReason) {
+          setResetStatus({
+            reason: data.resetPasswordReason,
+            status: data.resetPasswordStatus || 'Pending',
+            requestedAt: data.resetPasswordRequestedAt
+          });
+        }
       } catch (err) { console.error(err); }
     };
     fetchProfile();
@@ -34,12 +43,13 @@ const ProfilePage = () => {
     try {
       const payload = {};
       if (profile.role === 'participant') {
-        payload.name = form.name;
+        payload.firstName = form.firstName;
+        payload.lastName = form.lastName;
         payload.contactNumber = form.contactNumber;
         payload.college = form.college;
         payload.interests = typeof form.interests === 'string' ? form.interests.split(',').map(i => i.trim()) : form.interests;
       } else if (profile.role === 'organizer') {
-        payload.name = form.name;
+        payload.name = form.firstName;
         payload.category = form.category;
         payload.description = form.description;
         payload.contactEmail = form.contactEmail;
@@ -137,11 +147,26 @@ const ProfilePage = () => {
 
           {/* Editable fields */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>Name</label>
-              {editing ? <input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
-                : <p style={{ fontWeight: 600 }}>{profile.name}</p>}
-            </div>
+            {profile.role === 'participant' ? (
+              <>
+                <div>
+                  <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>First Name</label>
+                  {editing ? <input value={form.firstName || ''} onChange={(e) => setForm({ ...form, firstName: e.target.value })} style={inputStyle} />
+                    : <p style={{ fontWeight: 600 }}>{profile.firstName}</p>}
+                </div>
+                <div>
+                  <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>Last Name</label>
+                  {editing ? <input value={form.lastName || ''} onChange={(e) => setForm({ ...form, lastName: e.target.value })} style={inputStyle} />
+                    : <p style={{ fontWeight: 600 }}>{profile.lastName}</p>}
+                </div>
+              </>
+            ) : (
+              <div>
+                <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>{profile.role === 'organizer' ? 'Club Name' : 'Name'}</label>
+                {editing ? <input value={form.firstName || ''} onChange={(e) => setForm({ ...form, firstName: e.target.value })} style={inputStyle} />
+                  : <p style={{ fontWeight: 600 }}>{profile.firstName}</p>}
+              </div>
+            )}
 
             <div>
               <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>Contact Number</label>
@@ -284,6 +309,31 @@ const ProfilePage = () => {
                 border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px',
                 color: '#ef4444', cursor: resetReason ? 'pointer' : 'not-allowed', fontWeight: 600
               }}>Request Password Reset</button>
+
+              {/* Password Reset Status */}
+              {resetStatus && (
+                <div style={{
+                  marginTop: '16px', padding: '16px',
+                  background: resetStatus.status === 'Approved' ? 'rgba(34,197,94,0.08)' : resetStatus.status === 'Rejected' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+                  border: `1px solid ${resetStatus.status === 'Approved' ? 'rgba(34,197,94,0.2)' : resetStatus.status === 'Rejected' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                  borderRadius: '12px',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: 600, color: '#ccc', fontSize: '0.9rem' }}>Latest Reset Request</span>
+                    <span style={{
+                      padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 600,
+                      background: resetStatus.status === 'Approved' ? 'rgba(34,197,94,0.15)' : resetStatus.status === 'Rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+                      color: resetStatus.status === 'Approved' ? '#22c55e' : resetStatus.status === 'Rejected' ? '#ef4444' : '#f59e0b',
+                    }}>{resetStatus.status}</span>
+                  </div>
+                  <p style={{ color: '#888', fontSize: '0.85rem', margin: 0 }}>Reason: {resetStatus.reason}</p>
+                  {resetStatus.requestedAt && (
+                    <p style={{ color: '#555', fontSize: '0.8rem', marginTop: '4px' }}>
+                      Requested: {new Date(resetStatus.requestedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

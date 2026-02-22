@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import DiscussionForum from '../components/DiscussionForum';
-
-const socket = io('http://localhost:3000');
 
 const EventDetailPage = () => {
   const { id } = useParams();
@@ -24,7 +22,10 @@ const EventDetailPage = () => {
   const [myTeam, setMyTeam] = useState(null);
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [joiningTeam, setJoiningTeam] = useState(false);
+  const [myRegistration, setMyRegistration] = useState(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
   const role = localStorage.getItem('role');
+  const socketRef = useRef(null);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -37,7 +38,10 @@ const EventDetailPage = () => {
           try {
             const regs = await API.get('/registrations/my-registrations');
             const found = regs.data.find(r => r.event?._id === id && r.statuses !== 'Cancelled');
-            if (found) setIsRegistered(true);
+            if (found) {
+              setIsRegistered(true);
+              setMyRegistration(found);
+            }
           } catch (e) { /* ignore */ }
 
           // Check for existing team
@@ -58,6 +62,9 @@ const EventDetailPage = () => {
 
   // Socket.io: Live capacity updates
   useEffect(() => {
+    socketRef.current = io('http://localhost:3000');
+    const socket = socketRef.current;
+
     socket.emit('joinEvent', id);
 
     socket.on('capacityUpdate', (data) => {
@@ -69,10 +76,20 @@ const EventDetailPage = () => {
     return () => {
       socket.emit('leaveEvent', id);
       socket.off('capacityUpdate');
+      socket.disconnect();
     };
   }, [id]);
 
   const handleRegister = async () => {
+    // Validate required form fields
+    if (event.formFields?.length > 0) {
+      for (const field of event.formFields) {
+        if (field.required && (!responses[field.label] || responses[field.label].trim() === '')) {
+          setMessage(`Please fill in the required field: ${field.label}`);
+          return;
+        }
+      }
+    }
     setRegistering(true);
     setMessage('');
     try {
@@ -110,6 +127,32 @@ const EventDetailPage = () => {
     } catch (err) {
       console.error('Google Calendar link failed', err);
     }
+  };
+
+  const handleOutlookCalendar = async () => {
+    try {
+      const { data } = await API.get(`/calendar/${id}/outlook`);
+      window.open(data.url, '_blank');
+    } catch (err) {
+      console.error('Outlook Calendar link failed', err);
+    }
+  };
+
+  const handleUploadPaymentProof = async (file) => {
+    if (!myRegistration || !file) return;
+    setUploadingProof(true);
+    try {
+      const formData = new FormData();
+      formData.append('paymentProof', file);
+      await API.put(`/registrations/${myRegistration._id}/payment-proof`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setMessage('Payment proof uploaded successfully!');
+      setMyRegistration({ ...myRegistration, paymentProof: 'uploaded', statuses: 'Pending' });
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Failed to upload payment proof');
+    }
+    setUploadingProof(false);
   };
 
   if (loading) return <div style={{ minHeight: '100vh', background: '#0a0a0c', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><div>Loading...</div></div>;
@@ -255,6 +298,11 @@ const EventDetailPage = () => {
               border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px',
               color: '#22c55e', fontWeight: 600, cursor: 'pointer'
             }}>📆 Add to Google Calendar</button>
+            <button onClick={handleOutlookCalendar} style={{
+              padding: '10px 20px', background: 'rgba(59,130,246,0.15)',
+              border: '1px solid rgba(59,130,246,0.3)', borderRadius: '12px',
+              color: '#60a5fa', fontWeight: 600, cursor: 'pointer'
+            }}>📅 Add to Outlook</button>
           </div>
         )}
 
@@ -282,6 +330,37 @@ const EventDetailPage = () => {
                     <option value="">Select...</option>
                     {field.option?.map((opt, j) => <option key={j} value={opt}>{opt}</option>)}
                   </select>
+                ) : field.fieldType === 'checkbox' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {field.option?.map((opt, j) => (
+                      <label key={j} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ccc', fontSize: '0.9rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          onChange={(e) => {
+                            const current = responses[field.label] ? responses[field.label].split(', ') : [];
+                            const updated = e.target.checked
+                              ? [...current, opt]
+                              : current.filter(c => c !== opt);
+                            setResponses({ ...responses, [field.label]: updated.join(', ') });
+                          }}
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                ) : field.fieldType === 'file' ? (
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      setResponses({ ...responses, [field.label]: file ? file.name : '' });
+                    }}
+                    style={{
+                      width: '100%', padding: '10px', background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+                      color: '#fff', boxSizing: 'border-box'
+                    }}
+                  />
                 ) : (
                   <input
                     type={field.fieldType === 'number' ? 'number' : 'text'}
@@ -474,8 +553,42 @@ const EventDetailPage = () => {
           )}
 
           {isRegistered ? (
-            <div style={{ padding: '16px', background: 'rgba(34,197,94,0.1)', borderRadius: '12px', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', fontWeight: 600 }}>
-              ✅ You are registered for this event
+            <div>
+              <div style={{ padding: '16px', background: 'rgba(34,197,94,0.1)', borderRadius: '12px', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', fontWeight: 600 }}>
+                ✅ You are registered for this event
+              </div>
+              {/* Payment proof upload for pending merchandise registrations */}
+              {myRegistration && event.type === 'Merchandise' && myRegistration.statuses === 'Pending' && !myRegistration.paymentProof && (
+                <div style={{
+                  marginTop: '16px', padding: '20px',
+                  background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+                  borderRadius: '14px',
+                }}>
+                  <h4 style={{ color: '#f59e0b', fontWeight: 700, marginBottom: '8px' }}>💳 Upload Payment Proof</h4>
+                  <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: '12px' }}>
+                    Upload a screenshot of your payment to get your purchase confirmed.
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleUploadPaymentProof(e.target.files[0])}
+                    disabled={uploadingProof}
+                    style={{
+                      width: '100%', padding: '10px', background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+                      color: '#fff', boxSizing: 'border-box',
+                    }}
+                  />
+                  {uploadingProof && <p style={{ color: '#f59e0b', fontSize: '0.85rem', marginTop: '8px' }}>Uploading...</p>}
+                </div>
+              )}
+              {myRegistration && myRegistration.paymentProof && myRegistration.statuses === 'Pending' && (
+                <div style={{
+                  marginTop: '16px', padding: '14px 16px', borderRadius: '12px',
+                  background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+                  color: '#3b82f6', fontSize: '0.9rem',
+                }}>⏳ Payment proof submitted. Awaiting organizer approval.</div>
+              )}
             </div>
           ) : deadlinePassed ? (
             <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>

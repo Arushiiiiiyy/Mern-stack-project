@@ -27,7 +27,8 @@ export const updateProfile = async (req, res) => {
 
     // Participant editable fields
     if (user.role === 'participant') {
-      if (req.body.name) user.name = req.body.name;
+      if (req.body.firstName) user.firstName = req.body.firstName;
+      if (req.body.lastName !== undefined) user.lastName = req.body.lastName;
       if (req.body.contactNumber) user.contactNumber = req.body.contactNumber;
       if (req.body.college) user.college = req.body.college;
       if (req.body.interests) user.interests = req.body.interests;
@@ -36,7 +37,7 @@ export const updateProfile = async (req, res) => {
 
     // Organizer editable fields
     if (user.role === 'organizer') {
-      if (req.body.name) user.name = req.body.name;
+      if (req.body.name) user.firstName = req.body.name;
       if (req.body.category) user.category = req.body.category;
       if (req.body.description) user.description = req.body.description;
       if (req.body.contactEmail) user.contactEmail = req.body.contactEmail;

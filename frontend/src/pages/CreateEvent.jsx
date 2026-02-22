@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
+import FormBuilder from '../components/FormBuilder';
 
 const CreateEvent = () => {
   const navigate = useNavigate();
@@ -23,6 +24,9 @@ const CreateEvent = () => {
     minTeamSize: '2',
     maxTeamSize: '4'
   });
+  const [formFields, setFormFields] = useState([]);
+  const [variants, setVariants] = useState([]);
+  const [purchaseLimitPerUser, setPurchaseLimitPerUser] = useState('');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,8 +53,22 @@ const CreateEvent = () => {
     try {
       const payload = {
         ...formData,
-        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        formFields: formFields.map(f => ({
+          label: f.label,
+          fieldType: f.fieldType,
+          required: f.required,
+          option: f.options || []
+        })),
       };
+      if (formData.type === 'Merchandise') {
+        payload.variants = variants.map(v => ({
+          name: v.name,
+          options: v.options.filter(Boolean),
+          stock: parseInt(v.stock) || 0
+        }));
+        if (purchaseLimitPerUser) payload.purchaseLimitPerUser = parseInt(purchaseLimitPerUser);
+      }
       await API.post('/events', payload);
       alert('Event created successfully!');
       navigate('/organizer-dashboard');
@@ -175,6 +193,97 @@ const CreateEvent = () => {
               <p style={{ color: '#666', fontSize: '0.8rem', marginTop: '6px' }}>Tags help participants discover your event through recommendations</p>
             </div>
           </div>
+
+          {/* Custom Registration Form */}
+          {formData.type === 'Normal' && (
+            <div style={sectionStyle}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: '#ddd' }}>📋 Registration Form Builder</h3>
+              <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '16px' }}>Add custom fields that participants must fill when registering</p>
+              <FormBuilder fields={formFields} onChange={setFormFields} />
+            </div>
+          )}
+
+          {/* Merchandise Builder */}
+          {formData.type === 'Merchandise' && (
+            <div style={sectionStyle}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: '#a855f7' }}>🛍️ Merchandise Setup</h3>
+              <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '16px' }}>Configure variants and purchase limits for your merchandise</p>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={labelStyle}>Purchase Limit Per User</label>
+                <input
+                  type="number"
+                  value={purchaseLimitPerUser}
+                  onChange={(e) => setPurchaseLimitPerUser(e.target.value)}
+                  placeholder="e.g. 3 (leave blank for unlimited)"
+                  min="1"
+                  style={inputStyle}
+                />
+                <p style={{ color: '#666', fontSize: '0.8rem', marginTop: '4px' }}>Max items a single user can purchase</p>
+              </div>
+
+              <label style={labelStyle}>Variants</label>
+              {variants.map((v, i) => (
+                <div key={i} style={{
+                  background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)',
+                  borderRadius: '12px', padding: '16px', marginBottom: '10px',
+                }}>
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', alignItems: 'center' }}>
+                    <input
+                      value={v.name}
+                      onChange={(e) => {
+                        const u = [...variants]; u[i] = { ...u[i], name: e.target.value }; setVariants(u);
+                      }}
+                      placeholder="Variant name (e.g. Size)"
+                      style={{ ...inputStyle, flex: 2 }}
+                    />
+                    <input
+                      type="number"
+                      value={v.stock}
+                      onChange={(e) => {
+                        const u = [...variants]; u[i] = { ...u[i], stock: e.target.value }; setVariants(u);
+                      }}
+                      placeholder="Stock"
+                      min="0"
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <button onClick={() => setVariants(variants.filter((_, j) => j !== i))}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                    {v.options.map((opt, j) => (
+                      <div key={j} style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <input
+                          value={opt}
+                          onChange={(e) => {
+                            const u = [...variants];
+                            const newOpts = [...u[i].options]; newOpts[j] = e.target.value;
+                            u[i] = { ...u[i], options: newOpts }; setVariants(u);
+                          }}
+                          placeholder={`Option ${j + 1}`}
+                          style={{ ...inputStyle, width: '120px', padding: '6px 10px', fontSize: '0.8rem' }}
+                        />
+                        <button onClick={() => {
+                          const u = [...variants]; u[i] = { ...u[i], options: u[i].options.filter((_, k) => k !== j) }; setVariants(u);
+                        }} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>
+                      </div>
+                    ))}
+                    <button onClick={() => {
+                      const u = [...variants]; u[i] = { ...u[i], options: [...u[i].options, ''] }; setVariants(u);
+                    }} style={{
+                      background: 'none', border: '1px dashed rgba(168,85,247,0.3)',
+                      borderRadius: '6px', color: '#a855f7', cursor: 'pointer', fontSize: '0.75rem', padding: '4px 10px',
+                    }}>+ Option</button>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setVariants([...variants, { name: '', options: [''], stock: '' }])} style={{
+                width: '100%', padding: '12px', background: 'rgba(168,85,247,0.1)',
+                border: '1px dashed rgba(168,85,247,0.3)', borderRadius: '10px',
+                color: '#a855f7', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+              }}>+ Add Variant</button>
+            </div>
+          )}
 
           {/* Hackathon / Team Event */}
           {formData.type === 'Normal' && (

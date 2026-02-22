@@ -2,17 +2,33 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import API from '../api';
 
-const socket = io('http://localhost:3000');
-
 const DiscussionForum = ({ eventId }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [replyTo, setReplyTo] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const bottomRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const socketRef = useRef(null);
   const role = localStorage.getItem('role');
 
+  const isScrolledToBottom = () => {
+    const el = messagesContainerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+  };
+
+  const handleMessagesScroll = () => {
+    if (isScrolledToBottom()) {
+      setUnreadCount(0);
+    }
+  };
+
   useEffect(() => {
+    socketRef.current = io('http://localhost:3000');
+    const s = socketRef.current;
+
     const fetchMessages = async () => {
       try {
         const { data } = await API.get(`/forum/${eventId}`);
@@ -22,20 +38,24 @@ const DiscussionForum = ({ eventId }) => {
     };
     fetchMessages();
 
-    socket.emit('joinForum', eventId);
+    s.emit('joinForum', eventId);
 
-    socket.on('messageReceived', (msg) => {
+    s.on('messageReceived', (msg) => {
       setMessages(prev => [...prev, msg]);
+      if (!isScrolledToBottom()) {
+        setUnreadCount(prev => prev + 1);
+      }
     });
 
-    socket.on('messageRemoved', (msgId) => {
+    s.on('messageRemoved', (msgId) => {
       setMessages(prev => prev.filter(m => m._id !== msgId));
     });
 
     return () => {
-      socket.emit('leaveForum', eventId);
-      socket.off('messageReceived');
-      socket.off('messageRemoved');
+      s.emit('leaveForum', eventId);
+      s.off('messageReceived');
+      s.off('messageRemoved');
+      s.disconnect();
     };
   }, [eventId]);
 
@@ -49,7 +69,7 @@ const DiscussionForum = ({ eventId }) => {
       const body = { content: input };
       if (replyTo) body.parentMessage = replyTo._id;
       const { data } = await API.post(`/forum/${eventId}`, body);
-      socket.emit('newMessage', { eventId, message: data });
+      socketRef.current.emit('newMessage', { eventId, message: data });
       setInput('');
       setReplyTo(null);
     } catch (err) {
@@ -59,7 +79,7 @@ const DiscussionForum = ({ eventId }) => {
 
   const handlePin = async (msgId) => {
     try {
-      await API.put(`/forum/${eventId}/${msgId}/pin`);
+      await API.put(`/forum/${eventId}/pin/${msgId}`);
       setMessages(prev => prev.map(m => m._id === msgId ? { ...m, pinned: !m.pinned } : m));
     } catch (err) { console.error(err); }
   };
@@ -67,13 +87,13 @@ const DiscussionForum = ({ eventId }) => {
   const handleDelete = async (msgId) => {
     try {
       await API.delete(`/forum/${eventId}/${msgId}`);
-      socket.emit('messageDeleted', { eventId, messageId: msgId });
+      socketRef.current.emit('messageDeleted', { eventId, messageId: msgId });
     } catch (err) { console.error(err); }
   };
 
   const handleReact = async (msgId, emoji) => {
     try {
-      const { data } = await API.put(`/forum/${eventId}/${msgId}/react`, { emoji });
+      const { data } = await API.put(`/forum/${eventId}/react/${msgId}`, { emoji });
       setMessages(prev => prev.map(m => m._id === msgId ? data : m));
     } catch (err) { console.error(err); }
   };
@@ -105,7 +125,14 @@ const DiscussionForum = ({ eventId }) => {
       )}
 
       {/* Messages */}
-      <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '16px 20px' }}>
+      <div ref={messagesContainerRef} onScroll={handleMessagesScroll} style={{ maxHeight: '400px', overflowY: 'auto', padding: '16px 20px', position: 'relative' }}>
+        {unreadCount > 0 && (
+          <div onClick={() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); setUnreadCount(0); }} style={{
+            position: 'sticky', top: 0, zIndex: 5, textAlign: 'center', cursor: 'pointer',
+            padding: '6px 16px', background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.4)',
+            borderRadius: '12px', color: '#3b82f6', fontWeight: 600, fontSize: '0.8rem', marginBottom: '8px'
+          }}>▼ {unreadCount} new message{unreadCount > 1 ? 's' : ''}</div>
+        )}
         {loading ? (
           <p style={{ color: '#666', textAlign: 'center' }}>Loading messages...</p>
         ) : regularMessages.length === 0 ? (
@@ -118,6 +145,16 @@ const DiscussionForum = ({ eventId }) => {
               borderLeft: msg.parentMessage ? '3px solid rgba(59,130,246,0.3)' : 'none',
               paddingLeft: msg.parentMessage ? '16px' : '12px'
             }}>
+              {/* Thread reply preview */}
+              {msg.parentMessage && msg.parentMessage.content && (
+                <div style={{
+                  padding: '6px 10px', marginBottom: '6px', borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid rgba(59,130,246,0.5)',
+                  fontSize: '0.78rem', color: '#666', lineHeight: 1.4
+                }}>
+                  ↩ {msg.parentMessage.content.length > 80 ? msg.parentMessage.content.slice(0, 80) + '…' : msg.parentMessage.content}
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <div>
                   <span style={{ fontWeight: 700, fontSize: '0.9rem', color: msg.isAnnouncement ? '#8b5cf6' : '#fff' }}>

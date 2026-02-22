@@ -24,6 +24,7 @@ const OrganizerDashboard = () => {
 
   const totalRegistrations = events.reduce((acc, curr) => acc + (curr.registeredCount || 0), 0);
   const totalRevenue = events.reduce((acc, curr) => acc + ((curr.price || 0) * (curr.registeredCount || 0)), 0);
+  const completedEvents = events.filter(e => e.status === 'Completed');
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0c', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
@@ -180,6 +181,61 @@ const OrganizerDashboard = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Analytics Section for Completed Events */}
+        {completedEvents.length > 0 && (
+          <div style={{ marginTop: '3rem' }}>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '1.5rem' }}>📊 Event Analytics</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {completedEvents.map(ev => {
+                const fillRate = ev.limit ? Math.round((ev.registeredCount / ev.limit) * 100) : 0;
+                const revenue = (ev.price || 0) * (ev.registeredCount || 0);
+                return (
+                  <div key={ev._id} style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '16px', padding: '20px',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                      <h4 style={{ fontWeight: 700, margin: 0 }}>{ev.name}</h4>
+                      <span style={{
+                        padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 600,
+                        background: 'rgba(168,85,247,0.15)', color: '#a855f7',
+                      }}>Completed</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#888', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Registrations</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#60a5fa' }}>{ev.registeredCount || 0}</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#888', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Capacity</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#4ade80' }}>{ev.limit}</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#888', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fill Rate</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: fillRate >= 80 ? '#22c55e' : fillRate >= 50 ? '#f59e0b' : '#ef4444' }}>{fillRate}%</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#888', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Revenue</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#c084fc' }}>₹{revenue}</div>
+                      </div>
+                    </div>
+                    {/* Fill rate progress bar */}
+                    <div style={{ marginTop: '12px' }}>
+                      <div style={{ height: '6px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%', borderRadius: '3px',
+                          background: fillRate >= 80 ? 'linear-gradient(90deg, #22c55e, #34d399)' : fillRate >= 50 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)',
+                          width: `${Math.min(fillRate, 100)}%`, transition: 'width 0.5s ease',
+                        }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

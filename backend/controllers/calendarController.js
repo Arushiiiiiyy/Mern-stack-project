@@ -2,20 +2,43 @@ import Event from '../models/Event.js';
 import Registration from '../models/Registration.js';
 
 /**
- * Generate ICS content for an event
+ * Format a JS Date to ICS datetime in Asia/Kolkata timezone
+ */
+const formatDateIST = (d) => {
+  const date = new Date(d);
+  // Convert to IST (UTC+5:30)
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(date.getTime() + istOffset);
+  const y = ist.getUTCFullYear();
+  const m = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(ist.getUTCDate()).padStart(2, '0');
+  const h = String(ist.getUTCHours()).padStart(2, '0');
+  const min = String(ist.getUTCMinutes()).padStart(2, '0');
+  const s = String(ist.getUTCSeconds()).padStart(2, '0');
+  return `${y}${m}${day}T${h}${min}${s}`;
+};
+
+const VTIMEZONE = `BEGIN:VTIMEZONE
+TZID:Asia/Kolkata
+BEGIN:STANDARD
+DTSTART:19700101T000000
+TZOFFSETFROM:+0530
+TZOFFSETTO:+0530
+TZNAME:IST
+END:STANDARD
+END:VTIMEZONE`;
+
+/**
+ * Generate ICS content for an event with proper IST timezone
  */
 const generateICS = (event) => {
-  const formatDate = (d) => {
-    const date = new Date(d);
-    return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  };
-
   return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Felicity EMS//EN
+${VTIMEZONE}
 BEGIN:VEVENT
-DTSTART:${formatDate(event.startDate)}
-DTEND:${formatDate(event.endDate)}
+DTSTART;TZID=Asia/Kolkata:${formatDateIST(event.startDate)}
+DTEND;TZID=Asia/Kolkata:${formatDateIST(event.endDate)}
 SUMMARY:${event.name}
 DESCRIPTION:${event.description?.replace(/\n/g, '\\n') || ''}
 LOCATION:${event.venue || ''}
@@ -54,16 +77,15 @@ export const getBatchICS = async (req, res) => {
       statuses: 'Confirmed'
     }).populate('event');
 
-    let icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Felicity EMS//EN\n`;
+    let icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Felicity EMS//EN\n${VTIMEZONE}\n`;
 
     for (const reg of registrations) {
       if (!reg.event) continue;
       const ev = reg.event;
-      const formatDate = (d) => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 
       icsContent += `BEGIN:VEVENT
-DTSTART:${formatDate(ev.startDate)}
-DTEND:${formatDate(ev.endDate)}
+DTSTART;TZID=Asia/Kolkata:${formatDateIST(ev.startDate)}
+DTEND;TZID=Asia/Kolkata:${formatDateIST(ev.endDate)}
 SUMMARY:${ev.name}
 DESCRIPTION:${ev.description?.replace(/\n/g, '\\n') || ''}
 LOCATION:${ev.venue || ''}
@@ -92,6 +114,24 @@ export const getGoogleCalendarLink = async (req, res) => {
 
     const formatDate = (d) => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
     const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.name)}&dates=${formatDate(event.startDate)}/${formatDate(event.endDate)}&details=${encodeURIComponent(event.description || '')}&location=${encodeURIComponent(event.venue || '')}`;
+
+    res.json({ url });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Get Outlook Calendar link for an event
+ * @route   GET /api/calendar/:eventId/outlook
+ */
+export const getOutlookCalendarLink = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+
+    const formatOutlookDate = (d) => new Date(d).toISOString();
+    const url = `https://outlook.live.com/calendar/0/action/compose?subject=${encodeURIComponent(event.name)}&startdt=${formatOutlookDate(event.startDate)}&enddt=${formatOutlookDate(event.endDate)}&body=${encodeURIComponent(event.description || '')}&location=${encodeURIComponent(event.venue || '')}`;
 
     res.json({ url });
   } catch (error) {

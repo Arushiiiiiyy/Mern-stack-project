@@ -7,7 +7,8 @@ import './SignUpPage.css';
 const SignUpPage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -23,7 +24,7 @@ const SignUpPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword || !formData.contactNumber || !formData.participantType || !formData.college) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword || !formData.contactNumber || !formData.participantType || !formData.college) {
       alert('Please fill in all required fields');
       return;
     }
@@ -62,7 +63,8 @@ const SignUpPage = () => {
       <div className="left-panel">
         <h1 className="title">Sign up</h1>
         <form onSubmit={handleSubmit} className="form">
-          <input name="name" placeholder="Full Name *" onChange={handleChange} required />
+          <input name="firstName" placeholder="First Name *" onChange={handleChange} required />
+          <input name="lastName" placeholder="Last Name *" onChange={handleChange} required />
           <input type="email" name="email" placeholder="Email *" onChange={handleChange} required />
           <input type="password" name="password" placeholder="Password *" onChange={handleChange} required />
           <input type="password" name="confirmPassword" placeholder="Confirm Password *" onChange={handleChange} required />

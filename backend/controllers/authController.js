@@ -9,11 +9,11 @@ const generateToken=(id)=>{
 
 //the following function creates a new data in database
 export const registerUser=async(req,res)=>{
-    const {name,email,password,contactNumber,college,interests,participantType} = req.body;
+    const {firstName,lastName,email,password,contactNumber,college,interests,participantType} = req.body;
     try{
         // Validate required fields
-        if (!name || !email || !password || !contactNumber || !college || !participantType) {
-            return res.status(400).json({message:'All fields are required (name, email, password, contact number, college, participant type)'});
+        if (!firstName || !lastName || !email || !password || !contactNumber || !college || !participantType) {
+            return res.status(400).json({message:'All fields are required (first name, last name, email, password, contact number, college, participant type)'});
         }
         const userExists=await User.findOne({email});
         if(userExists){
@@ -24,7 +24,8 @@ export const registerUser=async(req,res)=>{
             return res.status(400).json({message:'IIIT participants must register with an IIIT email address (ending in iiit.ac.in)'});
         }
         const user=await User.create({
-            name,
+            firstName,
+            lastName,
             email,
             password,
             contactNumber,
