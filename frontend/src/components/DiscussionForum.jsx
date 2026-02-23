@@ -26,7 +26,7 @@ const DiscussionForum = ({ eventId }) => {
   };
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:3000');
+    socketRef.current = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
     const s = socketRef.current;
 
     const fetchMessages = async () => {

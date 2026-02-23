@@ -24,15 +24,16 @@ const app=express();
 const httpServer = createServer(app);
 
 // Socket.io setup for real-time forum + live updates
+const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
 const io = new Server(httpServer, {
-  cors: { origin: 'http://localhost:5173', credentials: true }
+  cors: { origin: allowedOrigin, credentials: true }
 });
 
 // Make io accessible to controllers via req.app
 app.set('io', io);
 
 app.use(express.json());
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: allowedOrigin, credentials: true }));
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));

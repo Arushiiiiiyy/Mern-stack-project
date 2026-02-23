@@ -88,7 +88,7 @@ export const removeOrganizer = async (req, res) => {
     } else if (action === 'archive') {
       organizer.archived = true;
       organizer.disabled = true;
-      await organizer.save();
+      await organizer.save({ validateModifiedOnly: true });
       // Store old statuses before closing so we can restore
       await Event.updateMany(
         { organizer: req.params.id, status: { $ne: 'Closed' } },
@@ -98,7 +98,7 @@ export const removeOrganizer = async (req, res) => {
     } else if (action === 'unarchive') {
       organizer.archived = false;
       organizer.disabled = false;
-      await organizer.save();
+      await organizer.save({ validateModifiedOnly: true });
       // Restore events that were closed during archiving back to Published
       await Event.updateMany(
         { organizer: req.params.id, status: 'Closed' },
@@ -107,12 +107,12 @@ export const removeOrganizer = async (req, res) => {
       return res.json({ message: 'Organizer unarchived. Their events have been restored.', organizer });
     } else if (action === 'enable') {
       organizer.disabled = false;
-      await organizer.save();
+      await organizer.save({ validateModifiedOnly: true });
       return res.json({ message: 'Organizer re-enabled', organizer });
     } else {
       // Default: disable (events remain visible, club cannot login)
       organizer.disabled = true;
-      await organizer.save();
+      await organizer.save({ validateModifiedOnly: true });
       return res.json({ message: 'Organizer disabled. Events remain visible.', organizer });
     }
   } catch (error) {
@@ -158,7 +158,7 @@ export const handlePasswordReset = async (req, res) => {
         comment: comment || ''
       });
       user.resetPasswordReason = '';
-      await user.save();
+      await user.save({ validateModifiedOnly: true });
 
       // Send new password via email instead of API response
       try {
@@ -193,7 +193,7 @@ export const handlePasswordReset = async (req, res) => {
         comment: comment || ''
       });
       user.resetPasswordReason = '';
-      await user.save();
+      await user.save({ validateModifiedOnly: true });
 
       return res.json({ message: 'Password reset rejected' });
     }
@@ -216,7 +216,7 @@ export const requestPasswordReset = async (req, res) => {
     user.resetPasswordRequested = true;
     user.resetPasswordReason = reason;
     user.resetPasswordStatus = 'Pending';
-    await user.save();
+    await user.save({ validateModifiedOnly: true });
 
     res.json({ message: 'Password reset request submitted' });
   } catch (error) {

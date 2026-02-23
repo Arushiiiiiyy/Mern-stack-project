@@ -37,16 +37,29 @@ const CreateEvent = () => {
     setError('');
 
     // Date validation
-    const start = new Date(formData.startDate);
-    const end = new Date(formData.endDate);
-    const regDeadline = new Date(formData.registrationDeadline);
+    const now = new Date();
+    const start = new Date(formData.startDate + '+05:30');
+    const end = new Date(formData.endDate + '+05:30');
+    const regDeadline = new Date(formData.registrationDeadline + '+05:30');
 
+    if (start <= now) {
+      setError('Start date must be in the future.');
+      return;
+    }
+    if (end <= now) {
+      setError('End date must be in the future.');
+      return;
+    }
+    if (regDeadline <= now) {
+      setError('Registration deadline must be in the future.');
+      return;
+    }
     if (end <= start) {
       setError('End date/time must be after start date/time.');
       return;
     }
-    if (regDeadline >= start) {
-      setError('Registration deadline must be before the event start date/time.');
+    if (regDeadline >= end) {
+      setError('Registration deadline must be before the event end date/time.');
       return;
     }
 
@@ -60,6 +73,8 @@ const CreateEvent = () => {
       };
       const payload = {
         ...formData,
+        price: parseInt(formData.price) || 0,
+        limit: parseInt(formData.limit) || 0,
         startDate: fromIST(formData.startDate),
         endDate: fromIST(formData.endDate),
         registrationDeadline: fromIST(formData.registrationDeadline),
@@ -166,11 +181,11 @@ const CreateEvent = () => {
               </div>
               <div>
                 <label style={labelStyle}>Capacity *</label>
-                <input type="number" name="limit" required onChange={handleChange} placeholder="100" style={inputStyle} />
+                <input type="number" name="limit" required onChange={handleChange} placeholder="100" style={inputStyle} min="1" onWheel={e => e.target.blur()} />
               </div>
               <div>
                 <label style={labelStyle}>Price (₹)</label>
-                <input type="number" name="price" defaultValue="0" onChange={handleChange} placeholder="0" style={inputStyle} />
+                <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="0" style={inputStyle} onWheel={e => e.target.blur()} />
               </div>
             </div>
           </div>

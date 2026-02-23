@@ -49,7 +49,8 @@ const EventManagePage = () => {
         startDate: toIST(ev.startDate), endDate: toIST(ev.endDate),
         registrationDeadline: toIST(ev.registrationDeadline),
         limit: ev.limit, price: ev.price, status: ev.status,
-        tags: (ev.tags || []).join(', '), eligibility: ev.eligibility || 'All'
+        tags: (ev.tags || []).join(', '), eligibility: ev.eligibility || 'All',
+        purchaseLimitPerUser: ev.purchaseLimitPerUser || ''
       });
       const { data: regs } = await API.get(`/events/${id}/registrations`);
       setRegistrations(regs);
@@ -79,12 +80,29 @@ const EventManagePage = () => {
         // Append IST offset so Date parses it as IST regardless of browser timezone
         return new Date(istStr + '+05:30').toISOString();
       };
+      // Date validation
+      const now = new Date();
+      const start = new Date(editForm.startDate + '+05:30');
+      const end = new Date(editForm.endDate + '+05:30');
+      const regDeadline = new Date(editForm.registrationDeadline + '+05:30');
+
+      if (!isLocked) {
+        if (start <= now) { alert('Start date must be in the future.'); setSaving(false); return; }
+        if (end <= now) { alert('End date must be in the future.'); setSaving(false); return; }
+        if (regDeadline <= now) { alert('Registration deadline must be in the future.'); setSaving(false); return; }
+        if (end <= start) { alert('End date/time must be after start date/time.'); setSaving(false); return; }
+        if (regDeadline >= end) { alert('Registration deadline must be before the event end date/time.'); setSaving(false); return; }
+      }
+
       const payload = {
         ...editForm,
+        price: parseInt(editForm.price) || 0,
+        limit: parseInt(editForm.limit) || 0,
         startDate: fromIST(editForm.startDate),
         endDate: fromIST(editForm.endDate),
         registrationDeadline: fromIST(editForm.registrationDeadline),
-        tags: editForm.tags ? editForm.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+        tags: editForm.tags ? editForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        purchaseLimitPerUser: editForm.purchaseLimitPerUser ? parseInt(editForm.purchaseLimitPerUser) : undefined
       };
       await API.put(`/events/${id}`, payload);
       alert('Event updated!');
@@ -403,11 +421,11 @@ const EventManagePage = () => {
               </div>
               <div>
                 <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '4px', display: 'block' }}>Capacity</label>
-                <input type="number" value={editForm.limit || ''} onChange={e => setEditForm({ ...editForm, limit: e.target.value })} style={lockedInputStyle} disabled={isLocked} />
+                <input type="number" value={editForm.limit ?? ''} onChange={e => setEditForm({ ...editForm, limit: e.target.value })} style={lockedInputStyle} disabled={isLocked} onWheel={e => e.target.blur()} />
               </div>
               <div>
                 <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '4px', display: 'block' }}>Price (₹)</label>
-                <input type="number" value={editForm.price || ''} onChange={e => setEditForm({ ...editForm, price: e.target.value })} style={lockedInputStyle} disabled={isLocked} />
+                <input type="number" value={editForm.price ?? ''} onChange={e => setEditForm({ ...editForm, price: e.target.value })} style={lockedInputStyle} disabled={isLocked} onWheel={e => e.target.blur()} />
               </div>
               <div>
                 <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '4px', display: 'block' }}>Start Date</label>
@@ -425,6 +443,12 @@ const EventManagePage = () => {
                 <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '4px', display: 'block' }}>Tags (comma-separated)</label>
                 <input value={editForm.tags || ''} onChange={e => setEditForm({ ...editForm, tags: e.target.value })} style={lockedInputStyle} disabled={isLocked} placeholder="music, dance, hackathon" />
               </div>
+              {event.type === 'Merchandise' && (
+                <div>
+                  <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '4px', display: 'block' }}>Purchase Limit Per User</label>
+                  <input type="number" min="1" value={editForm.purchaseLimitPerUser || ''} onChange={e => setEditForm({ ...editForm, purchaseLimitPerUser: e.target.value })} style={lockedInputStyle} disabled={isLocked} placeholder="e.g. 5" />
+                </div>
+              )}
             </div>
             <div style={{ marginTop: '16px' }}>
               <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '4px', display: 'block' }}>Description</label>
@@ -446,13 +470,15 @@ const EventManagePage = () => {
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <div>
-                <h3 style={{ fontWeight: 700, marginBottom: '4px' }}>📋 Registration Form Fields</h3>
+                <h3 style={{ fontWeight: 700, marginBottom: '4px' }}>{event.type === 'Merchandise' ? '📋 Order Form Fields' : '📋 Registration Form Fields'}</h3>
                 <p style={{ color: '#666', fontSize: '0.85rem' }}>
                   {isClosed
                     ? 'Form cannot be edited — this event is closed.'
                     : isLocked
                       ? 'Form cannot be edited — this event already has registrations.'
-                      : 'Define what information participants must provide when registering.'}
+                      : event.type === 'Merchandise'
+                        ? 'Define what information buyers must provide when placing an order (e.g. delivery address, phone number).'
+                        : 'Define what information participants must provide when registering.'}
                 </p>
               </div>
             </div>
@@ -590,7 +616,7 @@ const EventManagePage = () => {
                           <span style={{ color: '#999', fontSize: '0.8rem' }}>{fmtIST(reg.createdAt)}</span>
                           <div>
                             {reg.paymentProof ? (
-                              <a href={`http://localhost:3000${reg.paymentProof}`} target="_blank" rel="noreferrer" style={{
+                              <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${reg.paymentProof}`} target="_blank" rel="noreferrer" style={{
                                 color: '#3b82f6', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 600
                               }}>📎 Proof</a>
                             ) : (
@@ -650,7 +676,7 @@ const EventManagePage = () => {
                                 </div>
                                 <div style={{ color: '#e0e0e0', fontSize: '0.9rem', wordBreak: 'break-word' }}>
                                   {typeof resp.value === 'string' && resp.value.startsWith('/uploads/')
-                                    ? <a href={`http://localhost:3000${resp.value}`} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>📎 View File</a>
+                                    ? <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${resp.value}`} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>📎 View File</a>
                                     : Array.isArray(resp.value)
                                       ? resp.value.join(', ')
                                       : String(resp.value || '—')}
@@ -763,14 +789,15 @@ const EventManagePage = () => {
                           <p style={{ color: '#888', fontSize: '0.85rem' }}>{reg.participant?.email}</p>
                           {reg.selectedVariants?.length > 0 && (
                             <p style={{ color: '#a855f7', fontSize: '0.85rem', marginTop: '4px' }}>
-                              🛒 {reg.selectedVariants.map(v => `${v.name}: ${v.option || v.variant || ''}`).join(' • ')}
+                              🛒 {reg.selectedVariants.map(v => `${v.name}: ${v.option || v.variant || ''}${v.quantity > 1 ? ` ×${v.quantity}` : ''}`).join(' • ')}
+                              {reg.quantity > 1 && <span style={{ color: '#888', marginLeft: '8px' }}>(Total qty: {reg.quantity})</span>}
                             </p>
                           )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
                         {reg.paymentProof ? (
-                          <a href={`http://localhost:3000${reg.paymentProof}`} target="_blank" rel="noreferrer" style={{
+                          <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${reg.paymentProof}`} target="_blank" rel="noreferrer" style={{
                             padding: '8px 14px', background: 'rgba(59,130,246,0.15)',
                             border: '1px solid rgba(59,130,246,0.3)', borderRadius: '10px',
                             color: '#3b82f6', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600
@@ -819,7 +846,7 @@ const EventManagePage = () => {
                                 </div>
                                 <div style={{ color: '#e0e0e0', fontSize: '0.9rem', wordBreak: 'break-word' }}>
                                   {typeof resp.value === 'string' && resp.value.startsWith('/uploads/')
-                                    ? <a href={`http://localhost:3000${resp.value}`} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>📎 View File</a>
+                                    ? <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${resp.value}`} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>📎 View File</a>
                                     : Array.isArray(resp.value)
                                       ? resp.value.join(', ')
                                       : String(resp.value || '—')}
@@ -829,6 +856,29 @@ const EventManagePage = () => {
                           </div>
                         ) : (
                           <p style={{ color: '#555', fontSize: '0.85rem', marginTop: '8px' }}>No custom form responses</p>
+                        )}
+
+                        {/* Selected Variants & Quantity */}
+                        {reg.selectedVariants?.length > 0 && (
+                          <div style={{ marginTop: '12px', padding: '12px 16px', background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: '10px' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#a855f7', marginBottom: '8px' }}>🛒 Order Details</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {reg.selectedVariants.map((sv, si) => (
+                                <span key={si} style={{
+                                  padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem',
+                                  background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', color: '#c4b5fd'
+                                }}>
+                                  {sv.name}: {sv.option}{sv.quantity > 1 ? ` ×${sv.quantity}` : ''}
+                                </span>
+                              ))}
+                            </div>
+                            {reg.quantity > 1 && (
+                              <div style={{ marginTop: '6px', color: '#888', fontSize: '0.8rem' }}>Total quantity: {reg.quantity}</div>
+                            )}
+                            {event.price > 0 && (
+                              <div style={{ marginTop: '4px', color: '#a855f7', fontSize: '0.85rem', fontWeight: 600 }}>Amount: ₹{event.price * (reg.quantity || 1)}</div>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

@@ -53,14 +53,17 @@ export const registerForEvent = async (req, res) => {
             return res.status(400).json({ message: 'Event is full' });
         }
 
-        // 3. Prevent Duplicate Registration
-        const alreadyRegistered = await Registration.findOne({
-            participant: req.user._id,
-            event: event._id,
-            statuses: { $nin: ['Cancelled', 'Rejected'] }
-        });
-        if (alreadyRegistered) {
-            return res.status(400).json({ message: 'You are already registered' });
+        // 3. Prevent Duplicate Registration (for non-merchandise events only)
+        //    Merchandise allows multiple purchases up to purchaseLimitPerUser
+        if (event.type !== 'Merchandise') {
+            const alreadyRegistered = await Registration.findOne({
+                participant: req.user._id,
+                event: event._id,
+                statuses: { $nin: ['Cancelled', 'Rejected'] }
+            });
+            if (alreadyRegistered) {
+                return res.status(400).json({ message: 'You are already registered' });
+            }
         }
 
         // 4. Eligibility check
@@ -70,24 +73,30 @@ export const registerForEvent = async (req, res) => {
             }
         }
 
-        // 4b. Purchase limit check for merchandise events
+        // 4b. Purchase limit check for merchandise events (counted by total quantity)
+        const requestedQty = parseInt(req.body.quantity) || 1;
         if (event.type === 'Merchandise' && event.purchaseLimitPerUser) {
-            const existingPurchases = await Registration.countDocuments({
-                participant: req.user._id,
-                event: event._id,
-                statuses: { $nin: ['Cancelled', 'Rejected'] }
-            });
-            if (existingPurchases >= event.purchaseLimitPerUser) {
-                return res.status(400).json({ message: `Purchase limit reached (max ${event.purchaseLimitPerUser} per user)` });
+            const existingPurchases = await Registration.aggregate([
+                { $match: { participant: req.user._id, event: event._id, statuses: { $nin: ['Cancelled', 'Rejected'] } } },
+                { $group: { _id: null, totalQty: { $sum: '$quantity' } } }
+            ]);
+            const currentTotal = existingPurchases[0]?.totalQty || 0;
+            if (currentTotal + requestedQty > event.purchaseLimitPerUser) {
+                return res.status(400).json({ message: `Purchase limit reached. Max ${event.purchaseLimitPerUser} per user, you already have ${currentTotal}.` });
             }
         }
 
-        // 4c. Stock check for merchandise variants (atomic check)
+        // 4c. Stock check for merchandise variants
         if (event.type === 'Merchandise' && req.body.selectedVariants?.length > 0) {
+            // Group requested quantity per variant name for stock check
+            const variantQtyMap = {};
             for (const sv of req.body.selectedVariants) {
-                const variant = event.variants?.find(v => v.name === sv.name);
-                if (variant && variant.stock !== undefined && variant.stock !== null && variant.stock <= 0) {
-                    return res.status(400).json({ message: `Variant "${sv.name}" is out of stock` });
+                variantQtyMap[sv.name] = (variantQtyMap[sv.name] || 0) + (sv.quantity || 1);
+            }
+            for (const [varName, qty] of Object.entries(variantQtyMap)) {
+                const variant = event.variants?.find(v => v.name === varName);
+                if (variant && variant.stock !== undefined && variant.stock !== null && variant.stock < qty) {
+                    return res.status(400).json({ message: `Variant "${varName}" has only ${variant.stock} in stock` });
                 }
             }
         }
@@ -114,7 +123,7 @@ export const registerForEvent = async (req, res) => {
             ticketID,
             statuses: regStatus,
             selectedVariants: req.body.selectedVariants || [],
-            quantity: req.body.quantity || 1,
+            quantity: requestedQty,
             paymentProof: req.body.paymentProof || null
         });
 
@@ -318,13 +327,19 @@ export const approvePayment = async (req, res) => {
         const { action, comment } = req.body; // 'approve' or 'reject'
 
         if (action === 'approve') {
+            const qty = registration.quantity || 1;
             // Check stock is still available before approving
             if (registration.selectedVariants?.length > 0) {
                 const freshEvent = await Event.findById(event._id);
+                // Group requested quantity per variant
+                const variantQtyMap = {};
                 for (const sv of registration.selectedVariants) {
-                    const variant = freshEvent.variants?.find(v => v.name === sv.name);
-                    if (variant && variant.stock !== undefined && variant.stock !== null && variant.stock <= 0) {
-                        return res.status(400).json({ message: `Variant "${sv.name}" is out of stock. Cannot approve.` });
+                    variantQtyMap[sv.name] = (variantQtyMap[sv.name] || 0) + (sv.quantity || 1);
+                }
+                for (const [varName, needed] of Object.entries(variantQtyMap)) {
+                    const variant = freshEvent.variants?.find(v => v.name === varName);
+                    if (variant && variant.stock !== undefined && variant.stock !== null && variant.stock < needed) {
+                        return res.status(400).json({ message: `Variant "${varName}" has only ${variant.stock} in stock. Cannot approve.` });
                     }
                 }
             }
@@ -337,12 +352,12 @@ export const approvePayment = async (req, res) => {
                 for (const sv of registration.selectedVariants) {
                     const variant = freshEvent.variants?.find(v => v.name === sv.name);
                     if (variant && variant.stock !== undefined && variant.stock !== null) {
-                        variant.stock = Math.max(0, variant.stock - 1);
+                        variant.stock = Math.max(0, variant.stock - (sv.quantity || 1));
                     }
                 }
             }
-            // Increment registered count on approval
-            freshEvent.registeredCount += 1;
+            // Increment registered count on approval by quantity
+            freshEvent.registeredCount += qty;
             await freshEvent.save();
 
             // Generate signed QR on approval

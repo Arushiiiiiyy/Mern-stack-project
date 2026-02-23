@@ -22,15 +22,25 @@ export const createEvent = async (req, res) => {
     }
 
     // Validate dates are logical
+    const now = new Date();
     const start = new Date(startDate);
     const end = new Date(endDate);
     const regDeadline = new Date(registrationDeadline);
 
+    if (start <= now) {
+      return res.status(400).json({ message: 'Start date must be in the future.' });
+    }
+    if (end <= now) {
+      return res.status(400).json({ message: 'End date must be in the future.' });
+    }
+    if (regDeadline <= now) {
+      return res.status(400).json({ message: 'Registration deadline must be in the future.' });
+    }
     if (end <= start) {
       return res.status(400).json({ message: 'End date/time must be after start date/time.' });
     }
-    if (regDeadline >= start) {
-      return res.status(400).json({ message: 'Registration deadline must be before the event start date/time.' });
+    if (regDeadline >= end) {
+      return res.status(400).json({ message: 'Registration deadline must be before the event end date/time.' });
     }
 
     const event = await Event.create({
@@ -264,6 +274,18 @@ export const updateEvent = async (req, res) => {
       if (req.body.status) event.status = req.body.status;
       else return res.status(400).json({ message: `Event has ${actualRegCount} registration(s). Only status can be changed.` });
     } else if (currentStatus === 'Draft' || currentStatus === 'Published') {
+      // Validate dates if provided
+      const start = new Date(req.body.startDate || event.startDate);
+      const end = new Date(req.body.endDate || event.endDate);
+      const regDeadline = new Date(req.body.registrationDeadline || event.registrationDeadline);
+      const now = new Date();
+
+      if (start <= now) return res.status(400).json({ message: 'Start date must be in the future.' });
+      if (end <= now) return res.status(400).json({ message: 'End date must be in the future.' });
+      if (regDeadline <= now) return res.status(400).json({ message: 'Registration deadline must be in the future.' });
+      if (end <= start) return res.status(400).json({ message: 'End date/time must be after start date/time.' });
+      if (regDeadline >= end) return res.status(400).json({ message: 'Registration deadline must be before the event end date/time.' });
+
       // With 0 registrations, allow free editing in both Draft and Published states
       Object.assign(event, req.body);
     } else if (currentStatus === 'Ongoing' || currentStatus === 'Completed') {

@@ -45,7 +45,7 @@ export const updateProfile = async (req, res) => {
       if (req.body.discordWebhook) user.discordWebhook = req.body.discordWebhook;
     }
 
-    await user.save();
+    await user.save({ validateModifiedOnly: true });
     const updated = await User.findById(user._id).select('-password');
     res.json(updated);
   } catch (error) {
@@ -70,7 +70,7 @@ export const changePassword = async (req, res) => {
     }
 
     user.password = newPassword;
-    await user.save();
+    await user.save({ validateModifiedOnly: true });
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -145,7 +145,7 @@ export const toggleFollowOrganizer = async (req, res) => {
       user.followedOrganizers.push(orgId);
     }
 
-    await user.save();
+    await user.save({ validateModifiedOnly: true });
     res.json({ followedOrganizers: user.followedOrganizers });
   } catch (error) {
     res.status(500).json({ message: error.message });
