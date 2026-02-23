@@ -37,7 +37,7 @@ const userSchema=new mongoose.Schema({
     interests:[{type:String}],
     followedOrganizers:[{type:mongoose.Schema.Types.ObjectId,ref:'User'}],
     //organizer specific fields
-    category:{type:String},
+    category:{type:String, enum:['Cultural','Technical','Sports & Fitness','Gaming & E-Sports','Literary & Debating','Entrepreneurship','Social Service','General'], default:'General'},
     description:{type:String},
     //password reset fields
     resetPasswordRequested:{type:Boolean,default:false},
@@ -60,11 +60,20 @@ const userSchema=new mongoose.Schema({
 
 // Virtual for full name
 userSchema.virtual('name').get(function() {
-    return `${this.firstName} ${this.lastName}`.trim();
+    return `${this.firstName || ''} ${this.lastName || ''}`.trim() || 'Unknown';
 });
 
 userSchema.set('toJSON', { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
+
+// Password minimum length validation (skipped for already-hashed values)
+userSchema.pre('validate', function() {
+    if (!this.isModified('password')) return;
+    if (this.password.startsWith('$2')) return;
+    if (this.password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+    }
+});
 
 //pre is used to perform a function before saving lol 
 userSchema.pre('save',async function(){

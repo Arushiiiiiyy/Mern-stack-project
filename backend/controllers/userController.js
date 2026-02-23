@@ -8,7 +8,7 @@ export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
       .select('-password')
-      .populate('followedOrganizers', 'name category description email');
+      .populate('followedOrganizers', 'firstName lastName category description email');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (error) {
@@ -65,6 +65,9 @@ export const changePassword = async (req, res) => {
     if (!(await user.matchPassword(currentPassword))) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
 
     user.password = newPassword;
     await user.save();
@@ -81,7 +84,7 @@ export const changePassword = async (req, res) => {
 export const getOrganizers = async (req, res) => {
   try {
     const organizers = await User.find({ role: 'organizer', disabled: { $ne: true } })
-      .select('name category description email contactEmail');
+      .select('firstName lastName category description email contactEmail');
     res.json(organizers);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -95,7 +98,7 @@ export const getOrganizers = async (req, res) => {
 export const getOrganizerById = async (req, res) => {
   try {
     const organizer = await User.findById(req.params.id)
-      .select('name role category description email contactEmail contactNumber');
+      .select('firstName lastName role category description email contactEmail contactNumber');
     if (!organizer || organizer.role !== 'organizer') {
       return res.status(404).json({ message: 'Organizer not found' });
     }
@@ -132,11 +135,12 @@ export const getOrganizerById = async (req, res) => {
 export const toggleFollowOrganizer = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
     const orgId = req.params.organizerId;
 
-    const index = user.followedOrganizers.indexOf(orgId);
-    if (index > -1) {
-      user.followedOrganizers.splice(index, 1);
+    const idx = user.followedOrganizers.findIndex(id => id.toString() === orgId.toString());
+    if (idx > -1) {
+      user.followedOrganizers.splice(idx, 1);
     } else {
       user.followedOrganizers.push(orgId);
     }

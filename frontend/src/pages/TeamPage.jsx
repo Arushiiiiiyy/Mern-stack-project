@@ -214,7 +214,7 @@ const TeamPage = () => {
                 padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 600,
                 background: m.status === 'Accepted' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
                 color: m.status === 'Accepted' ? '#22c55e' : '#f59e0b'
-              }}>👑 Leader • {m.status}
+              }}>{(team.leader?._id || team.leader) === (m.user?._id || m.user) ? '👑 Leader' : '👤 Member'} • {m.status}
               </span>
             </div>
           ))}

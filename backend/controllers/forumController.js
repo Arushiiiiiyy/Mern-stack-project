@@ -9,9 +9,9 @@ import Event from '../models/Event.js';
 export const getMessages = async (req, res) => {
   try {
     const messages = await Message.find({ event: req.params.eventId, deleted: false })
-      .populate('user', 'name email role')
+      .populate('user', 'firstName lastName email role')
       .populate('parentMessage', 'content')
-      .populate('reactions.user', 'name')
+      .populate('reactions.user', 'firstName lastName')
       .sort({ pinned: -1, createdAt: 1 });
     res.json(messages);
   } catch (error) {
@@ -48,7 +48,7 @@ export const postMessage = async (req, res) => {
     });
 
     const populated = await Message.findById(message._id)
-      .populate('user', 'name email role');
+      .populate('user', 'firstName lastName email role');
 
     res.status(201).json(populated);
   } catch (error) {
@@ -128,7 +128,7 @@ export const reactToMessage = async (req, res) => {
 
     await message.save();
     const populated = await Message.findById(message._id)
-      .populate('reactions.user', 'name');
+      .populate('reactions.user', 'firstName lastName');
     res.json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });

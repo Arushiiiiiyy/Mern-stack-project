@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import API from '../api';
 
 const INTEREST_OPTIONS = [
-  'Music', 'Dance', 'Drama', 'Art', 'Photography',
-  'Coding', 'Hackathons', 'Robotics', 'AI/ML', 'Web Dev',
-  'Sports', 'Fitness', 'E-Sports', 'Gaming',
-  'Literature', 'Debating', 'Quiz', 'Public Speaking',
-  'Entrepreneurship', 'Finance', 'Social Service', 'Environment'
+  'Cultural', 'Technical', 'Sports & Fitness',
+  'Gaming & E-Sports', 'Literary & Debating',
+  'Entrepreneurship', 'Social Service'
 ];
+
+const CATEGORY_ICONS = {
+  'Cultural': '🎭', 'Technical': '💻', 'Sports & Fitness': '🏅',
+  'Gaming & E-Sports': '🎮', 'Literary & Debating': '📚', 'Entrepreneurship': '🚀',
+  'Social Service': '🤝', 'General': '⭐'
+};
 
 const OnboardingPage = () => {
   const navigate = useNavigate();
@@ -128,45 +132,63 @@ const OnboardingPage = () => {
             {organizers.length === 0 ? (
               <p style={{ color: '#666', textAlign: 'center', padding: '3rem' }}>No clubs available yet</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '2.5rem', maxHeight: '400px', overflowY: 'auto' }}>
-                {organizers.map(org => {
-                  const active = selectedOrgs.includes(org._id);
-                  return (
-                    <div
-                      key={org._id}
-                      onClick={() => toggleOrg(org._id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '14px',
-                        padding: '14px 18px', borderRadius: '16px', cursor: 'pointer',
-                        background: active ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${active ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <div style={{
-                        width: '42px', height: '42px', borderRadius: '12px',
-                        background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '1.1rem', fontWeight: 700, flexShrink: 0
-                      }}>
-                        {org.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '2px' }}>{org.name}</p>
-                        <p style={{ color: '#666', fontSize: '0.8rem' }}>{org.category || 'General Club'}</p>
-                      </div>
-                      <div style={{
-                        width: '24px', height: '24px', borderRadius: '6px',
-                        border: `2px solid ${active ? '#3b82f6' : 'rgba(255,255,255,0.2)'}`,
-                        background: active ? '#3b82f6' : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.8rem', color: '#fff', flexShrink: 0
-                      }}>
-                        {active && '✓'}
-                      </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '2.5rem', maxHeight: '450px', overflowY: 'auto' }}>
+                {Object.entries(
+                  organizers.reduce((acc, org) => {
+                    const cat = org.category || 'General';
+                    if (!acc[cat]) acc[cat] = [];
+                    acc[cat].push(org);
+                    return acc;
+                  }, {})
+                ).sort(([a], [b]) => a.localeCompare(b)).map(([category, orgs]) => (
+                  <div key={category}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', paddingLeft: '4px' }}>
+                      <span style={{ fontSize: '1.1rem' }}>{CATEGORY_ICONS[category] || '⭐'}</span>
+                      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#a78bfa', letterSpacing: '0.5px' }}>{category}</h3>
+                      <span style={{ fontSize: '0.75rem', color: '#666', fontWeight: 500 }}>({orgs.length})</span>
                     </div>
-                  );
-                })}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {orgs.map(org => {
+                        const active = selectedOrgs.includes(org._id);
+                        return (
+                          <div
+                            key={org._id}
+                            onClick={() => toggleOrg(org._id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '14px',
+                              padding: '14px 18px', borderRadius: '16px', cursor: 'pointer',
+                              background: active ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${active ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div style={{
+                              width: '42px', height: '42px', borderRadius: '12px',
+                              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '1.1rem', fontWeight: 700, flexShrink: 0
+                            }}>
+                              {org.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '2px' }}>{org.name}</p>
+                              {org.description && <p style={{ color: '#666', fontSize: '0.75rem' }}>{org.description.substring(0, 60)}{org.description.length > 60 ? '...' : ''}</p>}
+                            </div>
+                            <div style={{
+                              width: '24px', height: '24px', borderRadius: '6px',
+                              border: `2px solid ${active ? '#3b82f6' : 'rgba(255,255,255,0.2)'}`,
+                              background: active ? '#3b82f6' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.8rem', color: '#fff', flexShrink: 0
+                            }}>
+                              {active && '✓'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

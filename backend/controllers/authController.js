@@ -23,6 +23,10 @@ export const registerUser=async(req,res)=>{
         if (participantType === 'IIIT' && !email.endsWith('iiit.ac.in')) {
             return res.status(400).json({message:'IIIT participants must register with an IIIT email address (ending in iiit.ac.in)'});
         }
+        // Password length check
+        if (!password || password.length < 6) {
+            return res.status(400).json({message:'Password must be at least 6 characters'});
+        }
         const user=await User.create({
             firstName,
             lastName,
@@ -48,6 +52,9 @@ export const registerUser=async(req,res)=>{
         }
     }
     catch(error){
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({message: error.message});
+        }
         res.status(500).json({message:error.message});
     }
 };

@@ -98,7 +98,15 @@ const EventDetailPage = () => {
         selectedVariants: Object.entries(selectedVariants).map(([name, option]) => ({ name, option }))
       };
       const { data } = await API.post(`/registrations/${id}`, payload);
-      setMessage(`Registration successful! Ticket ID: ${data.ticketID}`);
+      if (event.type === 'Merchandise') {
+        setMessage('Order placed! Your purchase is pending approval. Please upload payment proof below.');
+        setMyRegistration(data);
+      } else if (event.price > 0) {
+        setMessage('Registration submitted! Please upload your payment proof below for approval.');
+        setMyRegistration(data);
+      } else {
+        setMessage(`Registration successful! Ticket ID: ${data.ticketID}`);
+      }
       setIsRegistered(true);
     } catch (err) {
       setMessage(err.response?.data?.message || 'Registration failed');
@@ -159,8 +167,10 @@ const EventDetailPage = () => {
   if (!event) return <div style={{ minHeight: '100vh', background: '#0a0a0c', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><div>Event not found</div></div>;
 
   const deadlinePassed = new Date() > new Date(event.registrationDeadline);
+  const eventEnded = new Date() > new Date(event.endDate);
+  const eventNotOpen = !['Published', 'Ongoing'].includes(event.status);
   const isFull = event.registeredCount >= event.limit;
-  const canRegister = role === 'participant' && !deadlinePassed && !isFull && !isRegistered;
+  const canRegister = role === 'participant' && !deadlinePassed && !eventEnded && !eventNotOpen && !isFull && !isRegistered;
   const isTeamEvent = event.isTeamEvent;
 
   const handleCreateTeam = async () => {
@@ -246,9 +256,9 @@ const EventDetailPage = () => {
           gap: '16px', marginBottom: '2rem'
         }}>
           {[
-            { icon: '📅', label: 'Start', value: new Date(event.startDate).toLocaleString() },
-            { icon: '📅', label: 'End', value: new Date(event.endDate).toLocaleString() },
-            { icon: '⏰', label: 'Deadline', value: new Date(event.registrationDeadline).toLocaleString() },
+            { icon: '📅', label: 'Start', value: new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
+            { icon: '📅', label: 'End', value: new Date(event.endDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
+            { icon: '⏰', label: 'Deadline', value: new Date(event.registrationDeadline).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
             { icon: '📍', label: 'Venue', value: event.venue },
             { icon: '👥', label: 'Capacity', value: `${event.registeredCount} / ${event.limit}` },
             { icon: '💰', label: 'Price', value: event.price > 0 ? `₹${event.price}` : 'Free' },
@@ -554,11 +564,21 @@ const EventDetailPage = () => {
 
           {isRegistered ? (
             <div>
-              <div style={{ padding: '16px', background: 'rgba(34,197,94,0.1)', borderRadius: '12px', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', fontWeight: 600 }}>
-                ✅ You are registered for this event
-              </div>
-              {/* Payment proof upload for pending merchandise registrations */}
-              {myRegistration && event.type === 'Merchandise' && myRegistration.statuses === 'Pending' && !myRegistration.paymentProof && (
+              {myRegistration?.statuses === 'Pending' && (event.type === 'Merchandise' || event.price > 0) ? (
+                <div style={{ padding: '16px', background: 'rgba(245,158,11,0.1)', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b', fontWeight: 600 }}>
+                  ⏳ {event.type === 'Merchandise' ? 'Order' : 'Registration'} Pending — Awaiting payment approval
+                </div>
+              ) : myRegistration?.statuses === 'Rejected' ? (
+                <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontWeight: 600 }}>
+                  ❌ Your order was rejected{myRegistration.rejectionComment ? `: ${myRegistration.rejectionComment}` : ''}
+                </div>
+              ) : (
+                <div style={{ padding: '16px', background: 'rgba(34,197,94,0.1)', borderRadius: '12px', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', fontWeight: 600 }}>
+                  ✅ You are registered for this event
+                </div>
+              )}
+              {/* Payment proof upload for pending paid registrations (merchandise or paid normal events) */}
+              {myRegistration && (event.type === 'Merchandise' || event.price > 0) && myRegistration.statuses === 'Pending' && !myRegistration.paymentProof && (
                 <div style={{
                   marginTop: '16px', padding: '20px',
                   background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
@@ -593,6 +613,14 @@ const EventDetailPage = () => {
           ) : deadlinePassed ? (
             <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
               ⏰ Registration deadline has passed
+            </div>
+          ) : eventEnded ? (
+            <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
+              🏁 This event has already ended
+            </div>
+          ) : eventNotOpen ? (
+            <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
+              🚫 Registration is not open for this event
             </div>
           ) : isFull ? (
             <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>

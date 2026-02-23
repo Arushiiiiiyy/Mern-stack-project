@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import Event from '../models/Event.js';
 import crypto from 'crypto';
+import { sendEmail } from '../utils/sendEmail.js';
 
 // @desc    Add a new Club/Organizer
 // @route   POST /api/admin/organizers
@@ -27,7 +28,7 @@ export const addOrganizer = async (req, res) => {
       return res.status(400).json({ message: 'Organizer already exists with this email' });
     }
 
-    const generatedPassword = crypto.randomBytes(4).toString('hex');
+    const generatedPassword = crypto.randomBytes(16).toString('base64url').slice(0, 20) + '!A1';
 
     const organizer = await User.create({
       firstName: name,
@@ -127,7 +128,7 @@ export const getPasswordResetRequests = async (req, res) => {
     const requests = await User.find({
       role: 'organizer',
       resetPasswordRequested: true
-    }).select('name email category resetPasswordReason resetPasswordStatus createdAt');
+    }).select('firstName lastName email category resetPasswordReason resetPasswordStatus createdAt');
     res.json(requests);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -144,7 +145,7 @@ export const handlePasswordReset = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (action === 'approve') {
-      const newPassword = crypto.randomBytes(4).toString('hex');
+      const newPassword = crypto.randomBytes(16).toString('base64url').slice(0, 20) + '!A1';
       user.password = newPassword;
       user.resetPasswordRequested = false;
       user.resetPasswordStatus = 'Approved';
@@ -159,11 +160,26 @@ export const handlePasswordReset = async (req, res) => {
       user.resetPasswordReason = '';
       await user.save();
 
+      // Send new password via email instead of API response
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: 'Felicity 2026 – Password Reset Approved',
+          html: `<h2>Your password has been reset</h2>
+            <p>Hi ${user.name},</p>
+            <p>Your password reset request has been approved. Your new password is:</p>
+            <p style="font-size:1.3rem;font-weight:700;background:#f3f4f6;padding:12px 16px;border-radius:8px;font-family:monospace">${newPassword}</p>
+            <p>Please change this password after logging in.</p>`
+        });
+      } catch (emailErr) {
+        console.error('Failed to email new password:', emailErr);
+      }
+
       return res.json({
-        message: 'Password reset approved',
-        newPassword,
+        message: 'Password reset approved. New password sent to organizer email.',
         organizerName: user.name,
-        organizerEmail: user.email
+        organizerEmail: user.email,
+        newPassword
       });
     } else if (action === 'reject') {
       user.resetPasswordRequested = false;

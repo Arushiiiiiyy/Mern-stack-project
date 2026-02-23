@@ -21,7 +21,7 @@ const eventSchema=new mongoose.Schema({
     formFields:[
         {
             label:String,
-            fieldType:{type:String,enum:['text','number','dropdown','file']},
+            fieldType:{type:String,enum:['text','number','dropdown','checkbox','file']},
             required:{type:Boolean,default:false},
             option:[String]
         }

@@ -7,14 +7,36 @@ const BrowseEvents = () => {
   const [events, setEvents] = useState([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [eligibilityFilter, setEligibilityFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [showFollowed, setShowFollowed] = useState(false);
   const [showTrending, setShowTrending] = useState(false);
+  const [followedOrganizers, setFollowedOrganizers] = useState([]);
   const navigate = useNavigate();
+
+  // Fetch user's followed organizers on mount
+  useEffect(() => {
+    const fetchFollowed = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const { data } = await API.get('/users/profile');
+        setFollowedOrganizers((data.followedOrganizers || []).map(o => o._id || o));
+      } catch (err) { /* ignore for non-logged-in */ }
+    };
+    fetchFollowed();
+  }, []);
 
   const fetchEvents = async () => {
     try {
       const params = {};
       if (search) params.search = search;
       if (typeFilter) params.type = typeFilter;
+      if (eligibilityFilter) params.eligibility = eligibilityFilter;
+      if (dateFrom) params.startDate = dateFrom;
+      if (dateTo) params.endDate = dateTo;
+      if (showFollowed && followedOrganizers.length > 0) params.followed = followedOrganizers.join(',');
       if (showTrending) params.trending = 'true';
       const { data } = await API.get('/events', { params });
       setEvents(data);
@@ -23,7 +45,7 @@ const BrowseEvents = () => {
     }
   };
 
-  useEffect(() => { fetchEvents(); }, [typeFilter, showTrending]);
+  useEffect(() => { fetchEvents(); }, [typeFilter, eligibilityFilter, showTrending, showFollowed, dateFrom, dateTo]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -70,6 +92,33 @@ const BrowseEvents = () => {
             <option value="Merchandise">Merchandise</option>
           </select>
 
+          <select
+            value={eligibilityFilter}
+            onChange={(e) => setEligibilityFilter(e.target.value)}
+            style={{
+              padding: '12px', background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
+              color: '#fff', outline: 'none'
+            }}
+          >
+            <option value="">All Eligibility</option>
+            <option value="IIIT">IIIT Only</option>
+            <option value="Non-IIIT">Non-IIIT Only</option>
+          </select>
+
+          <button
+            onClick={() => setShowFollowed(!showFollowed)}
+            style={{
+              padding: '12px 20px',
+              background: showFollowed ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${showFollowed ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: '12px', color: showFollowed ? '#3b82f6' : '#fff',
+              cursor: 'pointer', fontWeight: 600
+            }}
+          >
+            🏢 Followed Clubs
+          </button>
+
           <button
             onClick={() => setShowTrending(!showTrending)}
             style={{
@@ -82,6 +131,39 @@ const BrowseEvents = () => {
           >
             🔥 Trending
           </button>
+        </div>
+
+        {/* Date Range Filters */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <label style={{ color: '#888', fontSize: '0.85rem', fontWeight: 600 }}>Date Range:</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            style={{
+              padding: '10px 14px', background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
+              color: '#fff', outline: 'none', fontSize: '0.9rem'
+            }}
+          />
+          <span style={{ color: '#666' }}>to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            style={{
+              padding: '10px 14px', background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
+              color: '#fff', outline: 'none', fontSize: '0.9rem'
+            }}
+          />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }} style={{
+              padding: '8px 16px', background: 'rgba(239,68,68,0.1)',
+              border: '1px solid rgba(239,68,68,0.2)', borderRadius: '10px',
+              color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
+            }}>Clear Dates</button>
+          )}
         </div>
 
         {/* Events Grid */}
@@ -117,14 +199,21 @@ const BrowseEvents = () => {
                     <span style={{ fontSize: '0.75rem', color: '#666' }}>{event.tags[0]}</span>
                   )}
                 </div>
+                {event.organizer && (
+                  <div style={{
+                    fontSize: '0.8rem', color: '#3b82f6', fontWeight: 600, marginBottom: '8px',
+                    display: 'flex', alignItems: 'center', gap: '6px'
+                  }}>
+                    🏢 {event.organizer.name}
+                  </div>
+                )}
                 <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '8px' }}>{event.name}</h2>
                 <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '16px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {event.description}
                 </p>
                 <div style={{ fontSize: '0.85rem', color: '#999', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span>📅 {new Date(event.startDate).toLocaleDateString()}</span>
+                  <span>📅 {new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</span>
                   <span>📍 {event.venue}</span>
-                  {event.organizer && <span>🏢 {event.organizer.name}</span>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   <span style={{ fontWeight: 700, color: '#22c55e', fontSize: '1.1rem' }}>

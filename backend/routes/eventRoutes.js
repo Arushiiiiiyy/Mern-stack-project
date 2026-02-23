@@ -1,5 +1,5 @@
 import express from 'express';
-import { createEvent, getEvents, getMyEvents, getEventById, updateEvent, getEventRegistrations, exportRegistrations, getRecommendedEvents } from '../controllers/eventController.js';
+import { createEvent, getEvents, getMyEvents, getEventById, updateEvent, getEventRegistrations, exportRegistrations, getRecommendedEvents, getOrganizerAnalytics } from '../controllers/eventController.js';
 import { protect, organizerOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -12,6 +12,7 @@ router.get('/recommended', protect, getRecommendedEvents);
 
 // Protected Routes: Only Organizers can do this
 router.get('/my-events', protect, organizerOnly, getMyEvents);
+router.get('/analytics', protect, organizerOnly, getOrganizerAnalytics);
 router.post('/', protect, organizerOnly, createEvent);
 
 // Single event (public) - MUST be after /my-events

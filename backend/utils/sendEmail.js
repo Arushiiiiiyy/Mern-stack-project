@@ -34,15 +34,21 @@ const getTransporter = async () => {
 };
 
 /**
- * Send a registration confirmation email
+ * Send a registration confirmation email (with QR code if provided)
  */
-export const sendRegistrationEmail = async ({ to, participantName, eventName, ticketID, venue, startDate, type }) => {
+export const sendRegistrationEmail = async ({ to, participantName, eventName, ticketID, venue, startDate, type, qrDataUrl }) => {
   try {
     const transport = await getTransporter();
 
     const dateStr = new Date(startDate).toLocaleString('en-IN', {
       dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Kolkata'
     });
+
+    const qrSection = qrDataUrl ? `
+      <div style="text-align: center; margin: 24px 0;">
+        <p style="color: #888; font-size: 13px; margin-bottom: 8px;">Your Entry QR Code</p>
+        <img src="cid:qrcode" alt="QR Code" style="width: 200px; height: 200px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);" />
+      </div>` : '';
 
     const html = `
       <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0c; color: #fff; border-radius: 16px; overflow: hidden;">
@@ -65,6 +71,7 @@ export const sendRegistrationEmail = async ({ to, participantName, eventName, ti
               <tr><td style="padding: 6px 0; color: #888;">Date</td><td style="padding: 6px 0;">${dateStr}</td></tr>
             </table>
           </div>
+          ${qrSection}
           <p style="color: #888; font-size: 13px;">Show your ticket QR code at the venue for entry. You can view it anytime in your dashboard.</p>
         </div>
         <div style="padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
@@ -73,11 +80,23 @@ export const sendRegistrationEmail = async ({ to, participantName, eventName, ti
       </div>
     `;
 
+    // Build attachments array for inline QR
+    const attachments = [];
+    if (qrDataUrl) {
+      const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, '');
+      attachments.push({
+        filename: 'qrcode.png',
+        content: Buffer.from(base64Data, 'base64'),
+        cid: 'qrcode'
+      });
+    }
+
     const info = await transport.sendMail({
       from: process.env.SMTP_FROM || '"Felicity 2026" <noreply@felicity.iiit.ac.in>',
       to,
       subject: `Registration Confirmed: ${eventName} — ${ticketID}`,
-      html
+      html,
+      attachments
     });
 
     // In dev mode, log the preview URL
@@ -95,9 +114,15 @@ export const sendRegistrationEmail = async ({ to, participantName, eventName, ti
 /**
  * Send merchandise payment approved email with QR
  */
-export const sendPaymentApprovedEmail = async ({ to, participantName, eventName, ticketID }) => {
+export const sendPaymentApprovedEmail = async ({ to, participantName, eventName, ticketID, qrDataUrl }) => {
   try {
     const transport = await getTransporter();
+
+    const qrSection = qrDataUrl ? `
+      <div style="text-align: center; margin: 24px 0;">
+        <p style="color: #888; font-size: 13px; margin-bottom: 8px;">Your Entry QR Code</p>
+        <img src="cid:qrcode" alt="QR Code" style="width: 200px; height: 200px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);" />
+      </div>` : '';
 
     const html = `
       <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0c; color: #fff; border-radius: 16px; overflow: hidden;">
@@ -114,16 +139,28 @@ export const sendPaymentApprovedEmail = async ({ to, participantName, eventName,
             <p style="color: #888; font-size: 13px; margin: 0 0 8px;">Your Ticket ID</p>
             <p style="color: #22c55e; font-size: 24px; font-weight: 800; letter-spacing: 2px; margin: 0;">${ticketID}</p>
           </div>
+          ${qrSection}
           <p style="color: #888; font-size: 13px;">View your QR ticket in your dashboard.</p>
         </div>
       </div>
     `;
 
+    const attachments = [];
+    if (qrDataUrl) {
+      const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, '');
+      attachments.push({
+        filename: 'qrcode.png',
+        content: Buffer.from(base64Data, 'base64'),
+        cid: 'qrcode'
+      });
+    }
+
     const info = await transport.sendMail({
       from: process.env.SMTP_FROM || '"Felicity 2026" <noreply@felicity.iiit.ac.in>',
       to,
       subject: `Payment Approved: ${eventName} — ${ticketID}`,
-      html
+      html,
+      attachments
     });
 
     if (!process.env.SMTP_HOST) {
@@ -132,5 +169,26 @@ export const sendPaymentApprovedEmail = async ({ to, participantName, eventName,
     return info;
   } catch (error) {
     console.error('Email send failed:', error.message);
+  }
+};
+
+/**
+ * Generic email sender
+ */
+export const sendEmail = async ({ to, subject, html }) => {
+  try {
+    const transport = await getTransporter();
+    const info = await transport.sendMail({
+      from: process.env.SMTP_FROM || '"Felicity 2026" <noreply@felicity.iiit.ac.in>',
+      to,
+      subject,
+      html
+    });
+    if (!process.env.SMTP_HOST) {
+      console.log('Email preview URL:', nodemailer.getTestMessageUrl(info));
+    }
+    return info;
+  } catch (error) {
+    console.error('Generic email send failed:', error.message);
   }
 };

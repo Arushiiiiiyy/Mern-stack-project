@@ -51,8 +51,18 @@ const CreateEvent = () => {
     }
 
     try {
+      // Convert IST datetime-local values to UTC for storage
+      // Convert IST datetime-local values to UTC for storage
+      const fromIST = (istStr) => {
+        if (!istStr) return undefined;
+        // Append IST offset so Date parses it as IST regardless of browser timezone
+        return new Date(istStr + '+05:30').toISOString();
+      };
       const payload = {
         ...formData,
+        startDate: fromIST(formData.startDate),
+        endDate: fromIST(formData.endDate),
+        registrationDeadline: fromIST(formData.registrationDeadline),
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         formFields: formFields.map(f => ({
           label: f.label,
@@ -167,7 +177,7 @@ const CreateEvent = () => {
 
           {/* Schedule */}
           <div style={sectionStyle}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: '#ddd' }}>Schedule</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: '#ddd' }}>Schedule <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#888' }}>(IST — GMT+5:30)</span></h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={labelStyle}>Start Date & Time *</label>
@@ -247,7 +257,7 @@ const CreateEvent = () => {
                       min="0"
                       style={{ ...inputStyle, flex: 1 }}
                     />
-                    <button onClick={() => setVariants(variants.filter((_, j) => j !== i))}
+                    <button type="button" onClick={() => setVariants(variants.filter((_, j) => j !== i))}
                       style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
@@ -263,12 +273,12 @@ const CreateEvent = () => {
                           placeholder={`Option ${j + 1}`}
                           style={{ ...inputStyle, width: '120px', padding: '6px 10px', fontSize: '0.8rem' }}
                         />
-                        <button onClick={() => {
+                        <button type="button" onClick={() => {
                           const u = [...variants]; u[i] = { ...u[i], options: u[i].options.filter((_, k) => k !== j) }; setVariants(u);
                         }} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>
                       </div>
                     ))}
-                    <button onClick={() => {
+                    <button type="button" onClick={() => {
                       const u = [...variants]; u[i] = { ...u[i], options: [...u[i].options, ''] }; setVariants(u);
                     }} style={{
                       background: 'none', border: '1px dashed rgba(168,85,247,0.3)',
@@ -277,7 +287,7 @@ const CreateEvent = () => {
                   </div>
                 </div>
               ))}
-              <button onClick={() => setVariants([...variants, { name: '', options: [''], stock: '' }])} style={{
+              <button type="button" onClick={() => setVariants([...variants, { name: '', options: [''], stock: '' }])} style={{
                 width: '100%', padding: '12px', background: 'rgba(168,85,247,0.1)',
                 border: '1px dashed rgba(168,85,247,0.3)', borderRadius: '10px',
                 color: '#a855f7', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',

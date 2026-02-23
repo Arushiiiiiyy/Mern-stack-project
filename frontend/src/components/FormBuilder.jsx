@@ -112,15 +112,15 @@ const FormBuilder = ({ fields = [], onChange, readOnly = false }) => {
 
             {!readOnly && (
               <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                <button onClick={() => moveField(index, -1)} disabled={index === 0}
+                <button type="button" onClick={() => moveField(index, -1)} disabled={index === 0}
                   style={{ background: 'none', border: 'none', color: index === 0 ? '#333' : '#888', cursor: index === 0 ? 'default' : 'pointer', fontSize: '1rem', padding: '4px' }}>↑</button>
-                <button onClick={() => moveField(index, 1)} disabled={index === fields.length - 1}
+                <button type="button" onClick={() => moveField(index, 1)} disabled={index === fields.length - 1}
                   style={{ background: 'none', border: 'none', color: index === fields.length - 1 ? '#333' : '#888', cursor: index === fields.length - 1 ? 'default' : 'pointer', fontSize: '1rem', padding: '4px' }}>↓</button>
-                <button onClick={() => setEditingIndex(editingIndex === index ? null : index)}
+                <button type="button" onClick={() => setEditingIndex(editingIndex === index ? null : index)}
                   style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 8px' }}>
                   {editingIndex === index ? 'Done' : 'Edit'}
                 </button>
-                <button onClick={() => removeField(index)}
+                <button type="button" onClick={() => removeField(index)}
                   style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 8px' }}>✕</button>
               </div>
             )}
@@ -179,11 +179,11 @@ const FormBuilder = ({ fields = [], onChange, readOnly = false }) => {
                         placeholder={`Option ${optIdx + 1}`}
                         style={{ ...inputStyle, flex: 1 }}
                       />
-                      <button onClick={() => removeOption(index, optIdx)}
+                      <button type="button" onClick={() => removeOption(index, optIdx)}
                         style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem', padding: '4px' }}>✕</button>
                     </div>
                   ))}
-                  <button onClick={() => addOption(index)} style={{
+                  <button type="button" onClick={() => addOption(index)} style={{
                     background: 'none', border: '1px dashed rgba(255,255,255,0.15)',
                     borderRadius: '8px', color: '#888', cursor: 'pointer', fontSize: '0.8rem',
                     padding: '8px 16px', width: '100%', marginTop: '4px',
@@ -214,7 +214,7 @@ const FormBuilder = ({ fields = [], onChange, readOnly = false }) => {
 
       {/* Add field button */}
       {!readOnly && (
-        <button onClick={addField} style={{
+        <button type="button" onClick={addField} style={{
           width: '100%', padding: '14px', background: 'rgba(59,130,246,0.1)',
           border: '1px dashed rgba(59,130,246,0.3)', borderRadius: '12px',
           color: '#3b82f6', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',

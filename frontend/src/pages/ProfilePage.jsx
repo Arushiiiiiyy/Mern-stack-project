@@ -3,11 +3,9 @@ import API from '../api';
 import Navbar from '../components/Navbar';
 
 const INTEREST_OPTIONS = [
-  'Music', 'Dance', 'Drama', 'Art', 'Photography',
-  'Coding', 'Hackathons', 'Robotics', 'AI/ML', 'Web Dev',
-  'Sports', 'Fitness', 'E-Sports', 'Gaming',
-  'Literature', 'Debating', 'Quiz', 'Public Speaking',
-  'Entrepreneurship', 'Finance', 'Social Service', 'Environment'
+  'Cultural', 'Technical', 'Sports & Fitness',
+  'Gaming & E-Sports', 'Literary & Debating',
+  'Entrepreneurship', 'Social Service'
 ];
 
 const ProfilePage = () => {
@@ -222,6 +220,24 @@ const ProfilePage = () => {
                       )) : <p style={{ color: '#666' }}>—</p>}
                     </div>
                   )}
+                </div>
+
+                {/* Followed Clubs */}
+                <div>
+                  <label style={{ color: '#888', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>Following Clubs</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {profile.followedOrganizers?.length > 0 ? profile.followedOrganizers.map(org => (
+                      <span key={org._id || org} style={{
+                        padding: '6px 14px', borderRadius: '16px', fontSize: '0.85rem',
+                        background: 'rgba(168,85,247,0.1)', color: '#a855f7',
+                        border: '1px solid rgba(168,85,247,0.2)', display: 'inline-flex', alignItems: 'center', gap: '6px'
+                      }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.8rem' }}>{(org.firstName || org.name || 'Club')?.charAt(0).toUpperCase()}</span>
+                        {org.firstName || org.name || 'Club'}
+                        {org.category && <span style={{ color: '#888', fontSize: '0.75rem' }}>• {org.category}</span>}
+                      </span>
+                    )) : <p style={{ color: '#666' }}>Not following any clubs yet</p>}
+                  </div>
                 </div>
               </>
             )}

@@ -42,8 +42,10 @@ const ParticipantDashboard = () => {
   }, [location.key]);
 
   const now = new Date();
-  const upcoming = registrations.filter(r => r.event && new Date(r.event.startDate) > now && r.statuses !== 'Cancelled');
-  const normalCompleted = registrations.filter(r => r.event && new Date(r.event.endDate) < now && r.event.type === 'Normal');
+  // Active/upcoming: event hasn't ended yet and registration is not cancelled/rejected
+  const upcoming = registrations.filter(r => r.event && new Date(r.event.endDate) >= now && r.statuses !== 'Cancelled' && r.statuses !== 'Rejected');
+  // Past normal events (completed)
+  const normalCompleted = registrations.filter(r => r.event && new Date(r.event.endDate) < now && r.event.type === 'Normal' && r.statuses !== 'Cancelled' && r.statuses !== 'Rejected');
   const merchHistory = registrations.filter(r => r.event?.type === 'Merchandise');
   const cancelled = registrations.filter(r => r.statuses === 'Cancelled' || r.statuses === 'Rejected');
 
@@ -69,8 +71,8 @@ const ParticipantDashboard = () => {
   };
 
   const tabs = [
-    { key: 'upcoming', label: 'Upcoming', count: upcoming.length },
-    { key: 'normal', label: 'Normal', count: normalCompleted.length },
+    { key: 'upcoming', label: 'Active / Upcoming', count: upcoming.length },
+    { key: 'normal', label: 'Past Events', count: normalCompleted.length },
     { key: 'merchandise', label: 'Merchandise', count: merchHistory.length },
     { key: 'cancelled', label: 'Cancelled/Rejected', count: cancelled.length },
   ];
@@ -95,7 +97,7 @@ const ParticipantDashboard = () => {
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '4px' }}>{reg.ticketID}</p>
           <p style={{ color: '#888' }}>{reg.event?.name}</p>
-          <p style={{ color: '#666', fontSize: '0.85rem' }}>{reg.event?.startDate && new Date(reg.event.startDate).toLocaleString()}</p>
+          <p style={{ color: '#666', fontSize: '0.85rem' }}>{reg.event?.startDate && new Date(reg.event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</p>
         </div>
       </div>
     </div>
@@ -146,18 +148,28 @@ const ParticipantDashboard = () => {
                   <div style={{ display: 'flex', gap: '16px', color: '#888', fontSize: '0.85rem', flexWrap: 'wrap' }}>
                     <span>{reg.event?.type}</span>
                     <span>{reg.event?.organizer?.name}</span>
-                    <span>{reg.event?.startDate && new Date(reg.event.startDate).toLocaleDateString()}</span>
+                    {reg.teamName && <span style={{ color: '#a78bfa' }}>🏆 {reg.teamName}</span>}
+                    <span>{reg.event?.startDate && new Date(reg.event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</span>
                     <span style={{ color: reg.statuses === 'Confirmed' ? '#22c55e' : reg.statuses === 'Pending' ? '#f59e0b' : '#ef4444' }}>
                       ● {reg.statuses}
                     </span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setSelectedTicket(reg)} style={{
-                    padding: '8px 16px', background: 'rgba(59,130,246,0.15)',
-                    border: '1px solid rgba(59,130,246,0.3)', borderRadius: '10px',
-                    color: '#3b82f6', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
-                  }}>🎫 {reg.ticketID}</button>
+                  {reg.statuses === 'Confirmed' && (
+                    <button onClick={() => setSelectedTicket(reg)} style={{
+                      padding: '8px 16px', background: 'rgba(59,130,246,0.15)',
+                      border: '1px solid rgba(59,130,246,0.3)', borderRadius: '10px',
+                      color: '#3b82f6', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
+                    }}>🎫 {reg.ticketID}</button>
+                  )}
+                  {reg.statuses === 'Pending' && (
+                    <span style={{
+                      padding: '8px 16px', background: 'rgba(245,158,11,0.1)',
+                      border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px',
+                      color: '#f59e0b', fontSize: '0.85rem', fontWeight: 600
+                    }}>⏳ Pending Approval</span>
+                  )}
                   {reg.statuses !== 'Cancelled' && activeTab === 'upcoming' && (
                     <button onClick={() => handleCancel(reg._id)} style={{
                       padding: '8px 16px', background: 'rgba(239,68,68,0.1)',
@@ -183,21 +195,16 @@ const ParticipantDashboard = () => {
             }}>🔄 Refresh</button>
           </div>
           <p style={{ color: '#666', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-            Based on your interests and followed clubs
+            Events from clubs you follow — follow or unfollow clubs to update these
           </p>
           {recommended.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
               <p style={{ fontSize: '2rem', marginBottom: '8px' }}>🔍</p>
               <p style={{ color: '#888', marginBottom: '16px', lineHeight: 1.6 }}>
-                You haven't followed any clubs or set your interests yet.<br />
-                Personalize your experience to get tailored recommendations!
+                Follow clubs to see their upcoming events here.<br />
+                Recommendations update automatically when you follow or unfollow a club!
               </p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => navigate('/profile')} style={{
-                  padding: '10px 24px', background: 'rgba(59,130,246,0.15)',
-                  border: '1px solid rgba(59,130,246,0.3)', borderRadius: '12px',
-                  color: '#3b82f6', fontWeight: 600, cursor: 'pointer'
-                }}>🎯 Set Interests</button>
                 <button onClick={() => navigate('/clubs')} style={{
                   padding: '10px 24px', background: 'rgba(34,197,94,0.15)',
                   border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px',

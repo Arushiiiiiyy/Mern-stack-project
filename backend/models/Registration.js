@@ -38,7 +38,13 @@ const registrationSchema = new mongoose.Schema({
     }],
     quantity: { type: Number, default: 1 },
     attended: { type: Boolean, default: false },
-    attendedAt: { type: Date }
+    attendedAt: { type: Date },
+    rejectionComment: { type: String },
+    statusHistory: [{
+        status: String,
+        changedAt: { type: Date, default: Date.now },
+        comment: String
+    }]
 }, { timestamps: true });
 
 const Registration = mongoose.model('Registration', registrationSchema);

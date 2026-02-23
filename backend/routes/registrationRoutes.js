@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerForEvent, getMyRegistrations, getTicketQR, cancelRegistration, uploadPaymentProof, approvePayment, markAttendance } from '../controllers/registrationController.js';
+import { registerForEvent, getMyRegistrations, getTicketQR, cancelRegistration, uploadPaymentProof, approvePayment, markAttendance, verifyQR } from '../controllers/registrationController.js';
 import { protect, organizerOnly } from '../middleware/authMiddleware.js';
 import multer from 'multer';
 
@@ -14,12 +14,13 @@ const router = express.Router();
 
 // Participant routes
 router.get('/my-registrations', protect, getMyRegistrations);
+router.post('/verify-qr', protect, organizerOnly, verifyQR);   // Must be before /:eventId
 router.post('/:eventId', protect, registerForEvent);
 router.get('/:id/qr', protect, getTicketQR);
 router.put('/:id/cancel', protect, cancelRegistration);
 router.put('/:id/payment-proof', protect, upload.single('paymentProof'), uploadPaymentProof);
 
-// Organizer routes (merchandise approval)
+// Organizer routes
 router.put('/:id/approve', protect, organizerOnly, approvePayment);
 router.put('/:id/attend', protect, organizerOnly, markAttendance);
 

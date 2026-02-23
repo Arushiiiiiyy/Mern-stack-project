@@ -7,6 +7,18 @@ import QRCode from 'qrcode';
 import { sendRegistrationEmail } from '../utils/sendEmail.js';
 
 /**
+ * Generate a signed QR payload with HMAC to prevent tampering
+ */
+const generateSignedQR = async (data) => {
+    const payload = JSON.stringify(data);
+    const secret = process.env.JWT_SECRET || 'felicity-qr-secret';
+    const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 12);
+    const signedData = { ...data, sig: signature };
+    const qrDataUrl = await QRCode.toDataURL(JSON.stringify(signedData));
+    return qrDataUrl;
+};
+
+/**
  * @desc    Create a team for a hackathon event
  * @route   POST /api/teams
  */
@@ -40,8 +52,8 @@ export const createTeam = async (req, res) => {
 
     const populated = await Team.findById(team._id)
       .populate('event', 'name startDate endDate venue')
-      .populate('leader', 'name email')
-      .populate('members.user', 'name email');
+      .populate('leader', 'firstName lastName email')
+      .populate('members.user', 'firstName lastName email');
     res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -59,9 +71,17 @@ export const joinTeam = async (req, res) => {
     if (!team) return res.status(404).json({ message: 'Invalid invite code' });
     if (team.status !== 'Forming') return res.status(400).json({ message: 'Team is no longer accepting members' });
 
-    // Check if already a member
+    // Check if already a member of this team
     const isMember = team.members.some(m => m.user.toString() === req.user._id.toString());
     if (isMember) return res.status(400).json({ message: 'You are already in this team' });
+
+    // Prevent joining multiple teams for the same event
+    const existingTeam = await Team.findOne({
+      event: team.event,
+      'members.user': req.user._id,
+      status: { $ne: 'Cancelled' }
+    });
+    if (existingTeam) return res.status(400).json({ message: 'You already belong to a team for this event' });
 
     // Check team size
     const acceptedCount = team.members.filter(m => m.status === 'Accepted').length;
@@ -104,18 +124,30 @@ export const joinTeam = async (req, res) => {
         });
       }
 
-      // Send confirmation emails to all team members (non-blocking)
-      for (const member of team.members.filter(m => m.status === 'Accepted')) {
+      // Send confirmation emails with QR to all team members (non-blocking)
+      const acceptedMembers = team.members.filter(m => m.status === 'Accepted');
+      for (let idx = 0; idx < acceptedMembers.length; idx++) {
+        const member = acceptedMembers[idx];
         const memberUser = await User.findById(member.user);
         if (memberUser) {
+          const memberTicketID = ticketIDs[idx] || ticketIDs[0];
+          const qrDataUrl = await generateSignedQR({
+            ticketID: memberTicketID,
+            event: event.name,
+            eventId: event._id.toString(),
+            participant: memberUser.name,
+            email: memberUser.email,
+            team: team.name
+          });
           sendRegistrationEmail({
             to: memberUser.email,
             participantName: memberUser.name,
             eventName: event.name,
-            ticketID: ticketIDs[team.members.filter(m => m.status === 'Accepted').indexOf(member)] || ticketIDs[0],
+            ticketID: memberTicketID,
             venue: event.venue,
             startDate: event.startDate,
-            type: 'Normal'
+            type: 'Normal',
+            qrDataUrl
           });
         }
       }
@@ -124,8 +156,8 @@ export const joinTeam = async (req, res) => {
     await team.save();
     const populated = await Team.findById(team._id)
       .populate('event', 'name startDate endDate venue')
-      .populate('leader', 'name email')
-      .populate('members.user', 'name email');
+      .populate('leader', 'firstName lastName email')
+      .populate('members.user', 'firstName lastName email');
     res.json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -140,8 +172,8 @@ export const getMyTeams = async (req, res) => {
   try {
     const teams = await Team.find({ 'members.user': req.user._id })
       .populate('event', 'name startDate endDate venue')
-      .populate('leader', 'name email')
-      .populate('members.user', 'name email');
+      .populate('leader', 'firstName lastName email')
+      .populate('members.user', 'firstName lastName email');
     res.json(teams);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -156,8 +188,8 @@ export const getTeamById = async (req, res) => {
   try {
     const team = await Team.findById(req.params.id)
       .populate('event', 'name startDate endDate venue')
-      .populate('leader', 'name email')
-      .populate('members.user', 'name email');
+      .populate('leader', 'firstName lastName email')
+      .populate('members.user', 'firstName lastName email');
     if (!team) return res.status(404).json({ message: 'Team not found' });
     res.json(team);
   } catch (error) {
@@ -172,8 +204,8 @@ export const getTeamById = async (req, res) => {
 export const getEventTeams = async (req, res) => {
   try {
     const teams = await Team.find({ event: req.params.eventId })
-      .populate('leader', 'name email')
-      .populate('members.user', 'name email')
+      .populate('leader', 'firstName lastName email')
+      .populate('members.user', 'firstName lastName email')
       .sort({ createdAt: -1 });
     res.json(teams);
   } catch (error) {
@@ -197,8 +229,8 @@ export const leaveTeam = async (req, res) => {
     await team.save();
     const populated = await Team.findById(team._id)
       .populate('event', 'name startDate endDate venue')
-      .populate('leader', 'name email')
-      .populate('members.user', 'name email');
+      .populate('leader', 'firstName lastName email')
+      .populate('members.user', 'firstName lastName email');
     res.json({ message: 'Left team successfully', team: populated });
   } catch (error) {
     res.status(500).json({ message: error.message });

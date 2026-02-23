@@ -3,12 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
 
+const CLUB_CATEGORIES = ['All','Cultural','Technical','Sports & Fitness','Gaming & E-Sports','Literary & Debating','Entrepreneurship','Social Service','General'];
+
+const CATEGORY_ICONS = {
+  'All': '🏠', 'Cultural': '🎭', 'Technical': '💻', 'Sports & Fitness': '🏅',
+  'Gaming & E-Sports': '🎮', 'Literary & Debating': '📚', 'Entrepreneurship': '🚀',
+  'Social Service': '🤝', 'General': '⭐'
+};
+
 const ClubsPage = () => {
   const navigate = useNavigate();
   const [organizers, setOrganizers] = useState([]);
   const [following, setFollowing] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,18 +35,28 @@ const ClubsPage = () => {
   }, []);
 
   const toggleFollow = async (orgId) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please log in to follow clubs');
+      return;
+    }
     try {
       const { data } = await API.put(`/users/organizers/${orgId}/follow`);
-      setFollowing(data.followedOrganizers.map(id => id.toString()));
-    } catch (err) { console.error(err); }
+      setFollowing(data.followedOrganizers.map(id => (id._id || id).toString()));
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to follow/unfollow');
+    }
   };
 
   const isFollowing = (orgId) => following.some(id => id.toString() === orgId.toString());
 
-  const filtered = organizers.filter(o =>
-    o.name.toLowerCase().includes(search.toLowerCase()) ||
-    (o.category || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = organizers.filter(o => {
+    const matchesSearch = o.name.toLowerCase().includes(search.toLowerCase()) ||
+      (o.category || '').toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = activeCategory === 'All' || (o.category || 'General') === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0c', color: '#fff' }}>
@@ -52,9 +71,24 @@ const ClubsPage = () => {
           style={{
             width: '100%', padding: '14px 20px', background: 'rgba(255,255,255,0.05)',
             border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px',
-            color: '#fff', fontSize: '1rem', marginBottom: '2rem', boxSizing: 'border-box'
+            color: '#fff', fontSize: '1rem', marginBottom: '1rem', boxSizing: 'border-box'
           }}
         />
+
+        {/* Category filter tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '4px' }}>
+          {CLUB_CATEGORIES.map(cat => (
+            <button key={cat} onClick={() => setActiveCategory(cat)} style={{
+              padding: '8px 18px', borderRadius: '20px', cursor: 'pointer', fontWeight: 600,
+              fontSize: '0.85rem', whiteSpace: 'nowrap', border: 'none',
+              background: activeCategory === cat ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
+              color: activeCategory === cat ? '#60a5fa' : '#888',
+              transition: 'all 0.2s'
+            }}>
+              {CATEGORY_ICONS[cat]} {cat}
+            </button>
+          ))}
+        </div>
 
         {loading ? (
           <p style={{ color: '#666', textAlign: 'center', padding: '4rem' }}>Loading...</p>

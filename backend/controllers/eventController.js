@@ -86,7 +86,7 @@ export const createEvent = async (req, res) => {
 export const getEvents = async (req, res) => {
   try {
     const { search, type, eligibility, startDate, endDate, followed, trending } = req.query;
-    let query = { status: { $in: ['Published', 'Ongoing'] } };
+    let query = { status: { $in: ['Published', 'Ongoing'] }, endDate: { $gte: new Date() } };
 
     if (search) {
       query.$or = [
@@ -100,7 +100,7 @@ export const getEvents = async (req, res) => {
     if (startDate) query.startDate = { $gte: new Date(startDate) };
     if (endDate) query.endDate = { ...(query.endDate || {}), $lte: new Date(endDate) };
 
-    let eventsQuery = Event.find(query).populate('organizer', 'name email category description');
+    let eventsQuery = Event.find(query).populate('organizer', 'firstName lastName email category description');
 
     if (trending === 'true') {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -113,14 +113,17 @@ export const getEvents = async (req, res) => {
       const trendingIds = trendingRegs.map(r => r._id);
       if (trendingIds.length > 0) {
         query._id = { $in: trendingIds };
-        eventsQuery = Event.find(query).populate('organizer', 'name email category description');
+        eventsQuery = Event.find(query).populate('organizer', 'firstName lastName email category description');
+      } else {
+        // Fallback: top 5 by registeredCount overall when no 24h registrations
+        eventsQuery = Event.find(query).populate('organizer', 'firstName lastName email category description').sort({ registeredCount: -1 }).limit(5);
       }
     }
 
     if (followed) {
       const followedIds = followed.split(',');
       query.organizer = { $in: followedIds };
-      eventsQuery = Event.find(query).populate('organizer', 'name email category description');
+      eventsQuery = Event.find(query).populate('organizer', 'firstName lastName email category description');
     }
 
     const events = await eventsQuery.sort({ startDate: 1 });
@@ -134,11 +137,9 @@ export const getEvents = async (req, res) => {
 // @route   GET /api/events/recommended
 // @access  Private
 // Recommendation Logic:
-//   1. Fetch user's interests and followed organizers
-//   2. Query all upcoming published/ongoing events
-//   3. Score each event:
-//      - +3 if the event's organizer is in user's followed list
-//      - +1 for each user interest that matches an event tag (case-insensitive)
+//   1. Fetch user's followed organizers
+//   2. Query upcoming published/ongoing events ONLY from followed organizers
+//   3. Score each event by interest-tag matches for ordering
 //   4. Filter out events user already registered for
 //   5. Sort by score (descending), then by start date
 //   6. Return top 10
@@ -148,25 +149,27 @@ export const getRecommendedEvents = async (req, res) => {
     const userInterests = (user.interests || []).map(i => i.toLowerCase());
     const followedIds = (user.followedOrganizers || []).map(id => id.toString());
 
+    // If user doesn't follow any clubs, return empty
+    if (followedIds.length === 0) {
+      return res.json([]);
+    }
+
     // Get events user already registered for
     const existingRegs = await Registration.find({ participant: req.user._id }).select('event');
     const registeredEventIds = new Set(existingRegs.map(r => r.event.toString()));
 
-    // Get upcoming published/ongoing events
+    // Get upcoming published/ongoing events ONLY from followed organizers
     const events = await Event.find({
       status: { $in: ['Published', 'Ongoing'] },
-      startDate: { $gte: new Date() }
-    }).populate('organizer', 'name email category description');
+      endDate: { $gte: new Date() },
+      organizer: { $in: followedIds }
+    }).populate('organizer', 'firstName lastName email category description');
 
-    // Score and filter — don't exclude zero-score events from followed clubs
+    // Score by interest-tag match for ordering, filter out already registered
     const scored = events
       .filter(e => !registeredEventIds.has(e._id.toString()))
       .map(event => {
         let score = 0;
-        // Boost for followed organizers
-        if (event.organizer && followedIds.includes(event.organizer._id.toString())) {
-          score += 3;
-        }
         // Boost for matching interests vs tags
         if (event.tags && event.tags.length > 0) {
           event.tags.forEach(tag => {
@@ -178,21 +181,9 @@ export const getRecommendedEvents = async (req, res) => {
         return { event, score };
       });
 
-    // Get events with score > 0 (interest/follow matches)
-    let results = scored
-      .filter(item => item.score > 0)
+    // Sort by score desc, then by start date asc
+    const results = scored
       .sort((a, b) => b.score - a.score || new Date(a.event.startDate) - new Date(b.event.startDate));
-
-    // Only pad with popular events if user has set preferences
-    const hasPreferences = userInterests.length > 0 || followedIds.length > 0;
-    if (hasPreferences && results.length < 10) {
-      const existingIds = new Set(results.map(r => r.event._id.toString()));
-      const filler = scored
-        .filter(item => item.score === 0 && !existingIds.has(item.event._id.toString()))
-        .sort((a, b) => (b.event.registeredCount || 0) - (a.event.registeredCount || 0))
-        .slice(0, 10 - results.length);
-      results = [...results, ...filler];
-    }
 
     res.json(results.slice(0, 10).map(item => item.event));
   } catch (error) {
@@ -206,7 +197,7 @@ export const getRecommendedEvents = async (req, res) => {
 export const getEventById = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
-      .populate('organizer', 'name email category description contactEmail');
+      .populate('organizer', 'firstName lastName email category description contactEmail');
     if (!event) return res.status(404).json({ message: 'Event not found' });
     res.json(event);
   } catch (error) {
@@ -229,6 +220,15 @@ export const getMyEvents = async (req, res) => {
 // @desc    Update an event
 // @route   PUT /api/events/:id
 // @access  Private (Organizer owner only)
+// Valid state transitions: each key maps to allowed next states
+const VALID_TRANSITIONS = {
+  Draft: ['Published'],
+  Published: ['Ongoing', 'Closed'],
+  Ongoing: ['Completed', 'Closed'],
+  Completed: ['Closed'],
+  Closed: []
+};
+
 export const updateEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -240,25 +240,34 @@ export const updateEvent = async (req, res) => {
 
     const currentStatus = event.status;
 
-    // If event has registrations, only allow status changes
-    if (event.registeredCount > 0) {
-      if (req.body.status) event.status = req.body.status;
-      else return res.status(400).json({ message: 'Event has registrations. Only status can be changed.' });
-    } else if (currentStatus === 'Draft') {
-      Object.assign(event, req.body);
-    } else if (currentStatus === 'Published') {
-      const { description, registrationDeadline, limit, status: newStatus, formFields } = req.body;
-      if (description) event.description = description;
-      if (registrationDeadline && new Date(registrationDeadline) > event.registrationDeadline) {
-        event.registrationDeadline = registrationDeadline;
+    // Validate status transition if a new status is requested
+    if (req.body.status && req.body.status !== currentStatus) {
+      const allowed = VALID_TRANSITIONS[currentStatus] || [];
+      if (!allowed.includes(req.body.status)) {
+        return res.status(400).json({
+          message: `Cannot transition from "${currentStatus}" to "${req.body.status}". Allowed: ${allowed.join(', ') || 'none'}`
+        });
       }
-      if (limit && limit > event.limit) event.limit = limit;
-      if (newStatus) event.status = newStatus;
-      if (formFields && event.registeredCount === 0) event.formFields = formFields;
+    }
+
+    // Block all edits on Closed events
+    if (currentStatus === 'Closed') {
+      return res.status(400).json({ message: 'Cannot edit a closed event' });
+    }
+
+    // If event has registrations (including pending merchandise), only allow status changes
+    const actualRegCount = await Registration.countDocuments({
+      event: event._id,
+      statuses: { $nin: ['Cancelled', 'Rejected'] }
+    });
+    if (actualRegCount > 0) {
+      if (req.body.status) event.status = req.body.status;
+      else return res.status(400).json({ message: `Event has ${actualRegCount} registration(s). Only status can be changed.` });
+    } else if (currentStatus === 'Draft' || currentStatus === 'Published') {
+      // With 0 registrations, allow free editing in both Draft and Published states
+      Object.assign(event, req.body);
     } else if (currentStatus === 'Ongoing' || currentStatus === 'Completed') {
       if (req.body.status) event.status = req.body.status;
-    } else if (currentStatus === 'Closed') {
-      return res.status(400).json({ message: 'Cannot edit a closed event' });
     }
 
     await event.save();
@@ -285,7 +294,7 @@ export const getEventRegistrations = async (req, res) => {
     if (status) query.statuses = status;
 
     let registrations = await Registration.find(query)
-      .populate('participant', 'name email contactNumber college participantType')
+      .populate('participant', 'firstName lastName email contactNumber college participantType')
       .sort({ createdAt: -1 });
 
     if (search) {
@@ -313,16 +322,98 @@ export const exportRegistrations = async (req, res) => {
     }
 
     const registrations = await Registration.find({ event: req.params.id })
-      .populate('participant', 'name email contactNumber college participantType');
+      .populate('participant', 'firstName lastName email contactNumber college participantType');
 
-    let csv = 'Name,Email,Contact,College,Type,TicketID,Status,Attended,RegisteredAt\n';
+    // Build dynamic header from event's form fields
+    const formLabels = (event.formFields || []).map(f => f.label);
+    let csv = 'Name,Email,Contact,College,Type,TicketID,Status,Attended,RegisteredAt';
+    formLabels.forEach(label => { csv += `,"${label}"`; });
+    csv += '\n';
+
     registrations.forEach(r => {
-      csv += `"${r.participant.name}","${r.participant.email}","${r.participant.contactNumber || ''}","${r.participant.college || ''}","${r.participant.participantType}","${r.ticketID}","${r.statuses}","${r.attended}","${r.createdAt}"\n`;
+      csv += `"${r.participant.name}","${r.participant.email}","${r.participant.contactNumber || ''}","${r.participant.college || ''}","${r.participant.participantType}","${r.ticketID}","${r.statuses}","${r.attended}","${r.createdAt}"`;
+      // Append custom form field responses
+      formLabels.forEach(label => {
+        const resp = (r.responses || []).find(res => res.label === label);
+        csv += `,"${resp ? String(resp.value).replace(/"/g, '""') : ''}"`;
+      });
+      csv += '\n';
     });
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=${event.name}-registrations.csv`);
     res.send(csv);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get analytics for an organizer's events
+// @route   GET /api/events/analytics
+// @access  Private (Organizer only)
+export const getOrganizerAnalytics = async (req, res) => {
+  try {
+    const events = await Event.find({ organizer: req.user._id });
+    const eventIds = events.map(e => e._id);
+
+    // Aggregate attendance and status stats across all organizer events
+    const regStats = await Registration.aggregate([
+      { $match: { event: { $in: eventIds } } },
+      {
+        $group: {
+          _id: '$event',
+          total: { $sum: 1 },
+          confirmed: { $sum: { $cond: [{ $eq: ['$statuses', 'Confirmed'] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $eq: ['$statuses', 'Pending'] }, 1, 0] } },
+          cancelled: { $sum: { $cond: [{ $eq: ['$statuses', 'Cancelled'] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ['$statuses', 'Rejected'] }, 1, 0] } },
+          attended: { $sum: { $cond: ['$attended', 1, 0] } }
+        }
+      }
+    ]);
+
+    // Map stats to event objects
+    const statsMap = {};
+    regStats.forEach(s => { statsMap[s._id.toString()] = s; });
+
+    const analytics = events.map(ev => {
+      const stats = statsMap[ev._id.toString()] || { total: 0, confirmed: 0, pending: 0, cancelled: 0, rejected: 0, attended: 0 };
+      return {
+        _id: ev._id,
+        name: ev.name,
+        type: ev.type,
+        status: ev.status,
+        limit: ev.limit,
+        price: ev.price,
+        startDate: ev.startDate,
+        endDate: ev.endDate,
+        registeredCount: ev.registeredCount,
+        registrations: stats.total,
+        confirmed: stats.confirmed,
+        pending: stats.pending,
+        cancelled: stats.cancelled,
+        rejected: stats.rejected,
+        attended: stats.attended,
+        fillRate: ev.limit ? Math.round((ev.registeredCount / ev.limit) * 100) : 0,
+        attendanceRate: stats.confirmed > 0 ? Math.round((stats.attended / stats.confirmed) * 100) : 0,
+        revenue: (ev.price || 0) * (stats.confirmed || 0)
+      };
+    });
+
+    // Overall totals
+    const totals = {
+      totalEvents: events.length,
+      totalRegistrations: analytics.reduce((s, a) => s + a.registrations, 0),
+      totalConfirmed: analytics.reduce((s, a) => s + a.confirmed, 0),
+      totalAttended: analytics.reduce((s, a) => s + a.attended, 0),
+      totalRevenue: analytics.reduce((s, a) => s + a.revenue, 0),
+      avgFillRate: analytics.length > 0 ? Math.round(analytics.reduce((s, a) => s + a.fillRate, 0) / analytics.length) : 0,
+      avgAttendanceRate: analytics.filter(a => a.confirmed > 0).length > 0
+        ? Math.round(analytics.filter(a => a.confirmed > 0).reduce((s, a) => s + a.attendanceRate, 0) / analytics.filter(a => a.confirmed > 0).length)
+        : 0
+    };
+
+    res.json({ totals, events: analytics });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

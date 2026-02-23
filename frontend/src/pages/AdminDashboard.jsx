@@ -269,7 +269,12 @@ const AdminDashboard = () => {
                 <div style={{ padding: '12px 16px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', color: '#4ade80', fontSize: '0.85rem' }}>
                   🔐 Password will be auto-generated and shown after creation
                 </div>
-                <input placeholder="Category (e.g., Cultural, Technical)" value={addForm.category} onChange={e => setAddForm({ ...addForm, category: e.target.value })} style={inputStyle} />
+                <select value={addForm.category} onChange={e => setAddForm({ ...addForm, category: e.target.value })} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }} required>
+                  <option value="" disabled>Select Category</option>
+                  {['Cultural','Technical','Sports & Fitness','Gaming & E-Sports','Literary & Debating','Entrepreneurship','Social Service','General'].map(c => (
+                    <option key={c} value={c} style={{ background: '#1a1a2e', color: '#fff' }}>{c}</option>
+                  ))}
+                </select>
                 <input placeholder="Description (optional)" value={addForm.description} onChange={e => setAddForm({ ...addForm, description: e.target.value })} style={inputStyle} />
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                   <button type="button" onClick={() => setShowAddModal(false)} style={{
