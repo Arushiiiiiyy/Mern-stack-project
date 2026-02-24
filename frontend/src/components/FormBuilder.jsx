@@ -69,7 +69,6 @@ const FormBuilder = ({ fields = [], onChange, readOnly = false }) => {
 
   return (
     <div>
-      {/* Field list */}
       {fields.length === 0 && !readOnly && (
         <div style={{
           textAlign: 'center', padding: '2rem', color: '#555',
@@ -87,7 +86,7 @@ const FormBuilder = ({ fields = [], onChange, readOnly = false }) => {
           borderRadius: '12px', padding: '16px', marginBottom: '10px',
           transition: 'all 0.2s',
         }}>
-          {/* Field header */}
+          
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: editingIndex === index ? '14px' : 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
               <span style={{ color: '#555', fontSize: '0.8rem', fontWeight: 600, minWidth: '24px' }}>#{index + 1}</span>
@@ -126,7 +125,7 @@ const FormBuilder = ({ fields = [], onChange, readOnly = false }) => {
             )}
           </div>
 
-          {/* Expanded editing */}
+      
           {editingIndex === index && !readOnly && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'center' }}>
@@ -164,7 +163,7 @@ const FormBuilder = ({ fields = [], onChange, readOnly = false }) => {
                 </div>
               </div>
 
-              {/* Options for dropdown / checkbox */}
+              
               {needsOptions(field.fieldType) && (
                 <div>
                   <label style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px', display: 'block' }}>

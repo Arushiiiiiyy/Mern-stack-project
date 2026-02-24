@@ -49,8 +49,20 @@ export const registerForEvent = async (req, res) => {
         }
 
         // 2. Check Capacity Limit
-        if (event.registeredCount >= event.limit) {
-            return res.status(400).json({ message: 'Event is full' });
+        if (event.type === 'Merchandise') {
+            // Merchandise: registeredCount = confirmed only; also count pending towards capacity
+            const pendingRegCount = await Registration.countDocuments({
+                event: event._id,
+                statuses: 'Pending'
+            });
+            if (event.registeredCount + pendingRegCount >= event.limit) {
+                return res.status(400).json({ message: 'Event is full (all spots are reserved or confirmed)' });
+            }
+        } else {
+            // Normal events: registeredCount includes everyone (incremented at registration)
+            if (event.registeredCount >= event.limit) {
+                return res.status(400).json({ message: 'Event is full' });
+            }
         }
 
         // 3. Prevent Duplicate Registration (for non-merchandise events only)
@@ -86,17 +98,31 @@ export const registerForEvent = async (req, res) => {
             }
         }
 
-        // 4c. Stock check for merchandise variants
+        // 4c. Stock check for merchandise variants (account for pending orders)
         if (event.type === 'Merchandise' && req.body.selectedVariants?.length > 0) {
             // Group requested quantity per variant name for stock check
             const variantQtyMap = {};
             for (const sv of req.body.selectedVariants) {
                 variantQtyMap[sv.name] = (variantQtyMap[sv.name] || 0) + (sv.quantity || 1);
             }
+
+            // Count pending (not yet approved) orders per variant to calculate available stock
+            const pendingVariantQtys = await Registration.aggregate([
+                { $match: { event: event._id, statuses: 'Pending' } },
+                { $unwind: '$selectedVariants' },
+                { $group: { _id: '$selectedVariants.name', totalQty: { $sum: { $ifNull: ['$selectedVariants.quantity', 1] } } } }
+            ]);
+            const pendingMap = {};
+            pendingVariantQtys.forEach(v => { pendingMap[v._id] = v.totalQty; });
+
             for (const [varName, qty] of Object.entries(variantQtyMap)) {
                 const variant = event.variants?.find(v => v.name === varName);
-                if (variant && variant.stock !== undefined && variant.stock !== null && variant.stock < qty) {
-                    return res.status(400).json({ message: `Variant "${varName}" has only ${variant.stock} in stock` });
+                if (variant && variant.stock !== undefined && variant.stock !== null) {
+                    const reservedByPending = pendingMap[varName] || 0;
+                    const availableStock = variant.stock - reservedByPending;
+                    if (availableStock < qty) {
+                        return res.status(400).json({ message: `Variant "${varName}" has only ${availableStock} available (${reservedByPending} reserved by pending orders)` });
+                    }
                 }
             }
         }
@@ -127,35 +153,46 @@ export const registerForEvent = async (req, res) => {
             paymentProof: req.body.paymentProof || null
         });
 
-        // 8. For free Normal events: increment count + decrement stock immediately
-        //    For Merchandise events or paid Normal events: do NOT increment count or decrement stock until approved
+        // 8. Capacity & QR logic
         let qrDataUrl = null;
-        if (event.type !== 'Merchandise' && event.price <= 0) {
+        if (event.type !== 'Merchandise') {
+            // NORMAL events (free or paid): always +1 at registration time
             event.registeredCount += 1;
             await event.save();
 
-            // Generate signed QR for confirmed registrations
-            qrDataUrl = await generateSignedQR({
-                ticketID,
-                event: event.name,
-                eventId: event._id.toString(),
-                participant: req.user.name,
-                email: req.user.email
-            });
-
-            // Send confirmation email with QR (non-blocking)
-            sendRegistrationEmail({
-                to: req.user.email,
-                participantName: req.user.name,
-                eventName: event.name,
-                ticketID,
-                venue: event.venue,
-                startDate: event.startDate,
-                type: event.type,
-                qrDataUrl
-            });
+            if (event.price <= 0) {
+                // Free normal: confirmed immediately → generate QR
+                qrDataUrl = await generateSignedQR({
+                    ticketID,
+                    event: event.name,
+                    eventId: event._id.toString(),
+                    participant: req.user.name,
+                    email: req.user.email
+                });
+                sendRegistrationEmail({
+                    to: req.user.email,
+                    participantName: req.user.name,
+                    eventName: event.name,
+                    ticketID,
+                    venue: event.venue,
+                    startDate: event.startDate,
+                    type: event.type,
+                    qrDataUrl
+                });
+            } else {
+                // Paid normal: pending, counted in capacity but no QR yet
+                sendRegistrationEmail({
+                    to: req.user.email,
+                    participantName: req.user.name,
+                    eventName: event.name,
+                    ticketID,
+                    venue: event.venue,
+                    startDate: event.startDate,
+                    type: 'PaidNormal'
+                });
+            }
         } else {
-            // Merchandise or paid Normal: just save, send a pending order email (no QR)
+            // MERCHANDISE: do NOT increment registeredCount (only on approval)
             sendRegistrationEmail({
                 to: req.user.email,
                 participantName: req.user.name,
@@ -163,7 +200,7 @@ export const registerForEvent = async (req, res) => {
                 ticketID,
                 venue: event.venue,
                 startDate: event.startDate,
-                type: event.type === 'Merchandise' ? 'Merchandise' : 'PaidNormal'
+                type: 'Merchandise'
             });
         }
 
@@ -265,11 +302,33 @@ export const cancelRegistration = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
+        const wasConfirmed = registration.statuses === 'Confirmed';
         registration.statuses = 'Cancelled';
         await registration.save();
 
-        // Decrement event count
-        const event = await Event.findByIdAndUpdate(registration.event, { $inc: { registeredCount: -1 } }, { new: true });
+        const event = await Event.findById(registration.event);
+        if (event) {
+            if (event.type === 'Merchandise') {
+                // Merchandise: only decrement registeredCount if was Confirmed
+                // Pending merch orders were never in registeredCount
+                if (wasConfirmed) {
+                    event.registeredCount = Math.max(0, event.registeredCount - 1);
+                    // Restore variant stock (was decremented on approval)
+                    if (registration.selectedVariants?.length > 0) {
+                        for (const sv of registration.selectedVariants) {
+                            const variant = event.variants?.find(v => v.name === sv.name);
+                            if (variant && variant.stock !== undefined && variant.stock !== null) {
+                                variant.stock += (sv.quantity || 1);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Normal events: always decrement (was counted +1 at registration regardless of status)
+                event.registeredCount = Math.max(0, event.registeredCount - 1);
+            }
+            await event.save();
+        }
 
         // Broadcast capacity update
         const io = req.app.get('io');
@@ -328,10 +387,10 @@ export const approvePayment = async (req, res) => {
 
         if (action === 'approve') {
             const qty = registration.quantity || 1;
-            // Check stock is still available before approving
+            const freshEvent = await Event.findById(event._id);
+
+            // Check stock is still available before approving (merchandise only)
             if (registration.selectedVariants?.length > 0) {
-                const freshEvent = await Event.findById(event._id);
-                // Group requested quantity per variant
                 const variantQtyMap = {};
                 for (const sv of registration.selectedVariants) {
                     variantQtyMap[sv.name] = (variantQtyMap[sv.name] || 0) + (sv.quantity || 1);
@@ -346,8 +405,7 @@ export const approvePayment = async (req, res) => {
 
             registration.statuses = 'Confirmed';
 
-            // NOW decrement stock (only on approval per PDF spec)
-            const freshEvent = await Event.findById(event._id);
+            // Decrement stock on approval (merchandise)
             if (registration.selectedVariants?.length > 0) {
                 for (const sv of registration.selectedVariants) {
                     const variant = freshEvent.variants?.find(v => v.name === sv.name);
@@ -356,8 +414,12 @@ export const approvePayment = async (req, res) => {
                     }
                 }
             }
-            // Increment registered count on approval by quantity
-            freshEvent.registeredCount += qty;
+
+            // Only increment registeredCount for Merchandise events
+            // Normal events already counted +1 at registration time
+            if (event.type === 'Merchandise') {
+                freshEvent.registeredCount += qty;
+            }
             await freshEvent.save();
 
             // Generate signed QR on approval
@@ -400,8 +462,23 @@ export const approvePayment = async (req, res) => {
             return res.json({ message: 'Payment approved', registration, qrCode: qrDataUrl });
         } else if (action === 'reject') {
             registration.statuses = 'Rejected';
-            // No stock to restore — stock was never decremented for pending orders
-            // No count to decrement — count was never incremented for pending orders
+
+            // For normal events: decrement registeredCount (was counted at registration)
+            // For merchandise: no change (count was never incremented for pending)
+            if (event.type !== 'Merchandise') {
+                const freshEvent = await Event.findById(event._id);
+                freshEvent.registeredCount = Math.max(0, freshEvent.registeredCount - (registration.quantity || 1));
+                await freshEvent.save();
+
+                // Broadcast capacity update
+                const io = req.app.get('io');
+                if (io) {
+                    io.to(`event-${event._id.toString()}`).emit('capacityUpdate', {
+                        eventId: event._id.toString(),
+                        registeredCount: freshEvent.registeredCount
+                    });
+                }
+            }
 
             // Add rejection to status history
             if (!registration.statusHistory) registration.statusHistory = [];

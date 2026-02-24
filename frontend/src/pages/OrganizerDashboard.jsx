@@ -86,8 +86,8 @@ const OrganizerDashboard = () => {
           </p>
 
           <div style={{ fontSize: '0.85rem', color: '#999' }}>
-            <div style={{ marginBottom: '4px' }}>📍 {event.venue}</div>
-            <div style={{ marginBottom: '10px' }}>📅 {new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</div>
+            <div style={{ marginBottom: '4px' }}> {event.venue}</div>
+            <div style={{ marginBottom: '10px' }}>{new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#888', marginBottom: '6px' }}>
                 <span>Registrations</span>
@@ -130,7 +130,7 @@ const OrganizerDashboard = () => {
       <Navbar />
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 2rem 4rem' }}>
 
-        {/* HEADER */}
+        
         <div style={{ marginBottom: '2.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '2rem' }}>
           <h1 style={{ fontSize: '2.8rem', fontWeight: 900, letterSpacing: '-1px', margin: 0 }}>
             Organizer Hub
@@ -213,7 +213,7 @@ const OrganizerDashboard = () => {
                 width: '64px', height: '64px', background: 'rgba(255,255,255,0.05)',
                 borderRadius: '50%', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', marginBottom: '1.2rem', fontSize: '2rem'
-              }}>📭</div>
+              }}></div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#ccc', margin: '0 0 8px' }}>No events yet</h3>
               <p style={{ color: '#888', maxWidth: '320px', marginBottom: '1.5rem' }}>
                 You haven't created any events yet. Let's get the fest started!

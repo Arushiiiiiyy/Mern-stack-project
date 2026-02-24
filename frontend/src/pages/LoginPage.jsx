@@ -16,6 +16,7 @@ const LoginPage = () => {
       const { data } = await login(formData);
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role);
+      localStorage.setItem('userId', data._id);
       if (data.role === 'admin') navigate('/admin-dashboard');
       else if (data.role === 'organizer') navigate('/organizer-dashboard');
       else navigate('/participant-dashboard');

@@ -6,9 +6,9 @@ import Navbar from '../components/Navbar';
 const CLUB_CATEGORIES = ['All','Cultural','Technical','Sports & Fitness','Gaming & E-Sports','Literary & Debating','Entrepreneurship','Social Service','General'];
 
 const CATEGORY_ICONS = {
-  'All': '🏠', 'Cultural': '🎭', 'Technical': '💻', 'Sports & Fitness': '🏅',
-  'Gaming & E-Sports': '🎮', 'Literary & Debating': '📚', 'Entrepreneurship': '🚀',
-  'Social Service': '🤝', 'General': '⭐'
+  'All': '🏠', 'Cultural': 'Cultural', 'Technical': 'Technical', 'Sports & Fitness': 'Sports & Fitness',
+  'Gaming & E-Sports': 'Gaming & E-Sports', 'Literary & Debating': 'Literary & Debating', 'Entrepreneurship': 'Entrepreneurship',
+  'Social Service': 'Social Service', 'General': 'General'
 };
 
 const ClubsPage = () => {
@@ -75,7 +75,7 @@ const ClubsPage = () => {
           }}
         />
 
-        {/* Category filter tabs */}
+       
         <div style={{ display: 'flex', gap: '8px', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '4px' }}>
           {CLUB_CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setActiveCategory(cat)} style={{
@@ -94,7 +94,7 @@ const ClubsPage = () => {
           <p style={{ color: '#666', textAlign: 'center', padding: '4rem' }}>Loading...</p>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px' }}>
-            <p style={{ fontSize: '2rem', marginBottom: '8px' }}>🔍</p>
+            <p style={{ fontSize: '2rem', marginBottom: '8px' }}></p>
             <p style={{ color: '#666' }}>No clubs found</p>
           </div>
         ) : (

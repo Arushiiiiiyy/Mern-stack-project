@@ -64,11 +64,10 @@ const CreateEvent = () => {
     }
 
     try {
-      // Convert IST datetime-local values to UTC for storage
-      // Convert IST datetime-local values to UTC for storage
+
       const fromIST = (istStr) => {
         if (!istStr) return undefined;
-        // Append IST offset so Date parses it as IST regardless of browser timezone
+
         return new Date(istStr + '+05:30').toISOString();
       };
       const payload = {
@@ -119,7 +118,7 @@ const CreateEvent = () => {
       <Navbar />
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1.5rem 4rem' }}>
 
-        {/* Header */}
+       
         <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>Create New Event</h1>
@@ -139,7 +138,7 @@ const CreateEvent = () => {
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Basic Info */}
+         
           <div style={sectionStyle}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: '#ddd' }}>Basic Information</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -190,7 +189,7 @@ const CreateEvent = () => {
             </div>
           </div>
 
-          {/* Schedule */}
+        
           <div style={sectionStyle}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: '#ddd' }}>Schedule <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#888' }}>(IST — GMT+5:30)</span></h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
@@ -209,7 +208,7 @@ const CreateEvent = () => {
             </div>
           </div>
 
-          {/* Tags */}
+      
           <div style={sectionStyle}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: '#ddd' }}>Tags & Discovery</h3>
             <div>
@@ -219,7 +218,7 @@ const CreateEvent = () => {
             </div>
           </div>
 
-          {/* Custom Registration Form */}
+          
           {formData.type === 'Normal' && (
             <div style={sectionStyle}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: '#ddd' }}>📋 Registration Form Builder</h3>
@@ -228,10 +227,10 @@ const CreateEvent = () => {
             </div>
           )}
 
-          {/* Merchandise Builder */}
+    
           {formData.type === 'Merchandise' && (
             <div style={sectionStyle}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: '#a855f7' }}>🛍️ Merchandise Setup</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: '#a855f7' }}> Merchandise Setup</h3>
               <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '16px' }}>Configure variants and purchase limits for your merchandise</p>
 
               <div style={{ marginBottom: '20px' }}>
@@ -310,7 +309,7 @@ const CreateEvent = () => {
             </div>
           )}
 
-          {/* Hackathon / Team Event */}
+         
           {formData.type === 'Normal' && (
             <div style={sectionStyle}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: '#ddd' }}>Team Registration (Hackathon)</h3>
@@ -352,7 +351,7 @@ const CreateEvent = () => {
             </div>
           )}
 
-          {/* Submit */}
+         
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',

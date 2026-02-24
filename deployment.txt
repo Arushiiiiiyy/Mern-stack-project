@@ -1,2 +1,2 @@
-Frontend URL: <PASTE_VERCEL_URL_HERE>
-Backend API URL: <PASTE_RENDER_URL_HERE>
+Frontend URL: https://mern-stack-project-lovat-nine.vercel.app
+Backend API URL: https://felicity-backend-dpq6.onrender.com

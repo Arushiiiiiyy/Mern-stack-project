@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import FormBuilder from '../components/FormBuilder';
+import DiscussionForum from '../components/DiscussionForum';
 
 const STATUS_COLORS = {
   Draft: { bg: 'rgba(156,163,175,0.15)', border: 'rgba(156,163,175,0.3)', color: '#9ca3af' },
@@ -169,13 +170,14 @@ const EventManagePage = () => {
 
   const isClosed = event.status === 'Closed';
   const tabs = [
-    { key: 'overview', label: '📊 Overview' },
-    { key: 'details', label: '📝 Details' },
-    { key: 'formbuilder', label: '📋 Form Builder' },
-    { key: 'participants', label: `👥 Participants (${registrations.length})` },
-    ...(isPaidEvent ? [{ key: 'payments', label: `💳 Payments (${pendingPayments.length})` }] : []),
-    ...(event.type === 'Merchandise' ? [{ key: 'inventory', label: '📦 Inventory' }] : []),
-    ...(event.isTeamEvent ? [{ key: 'teams', label: `🏆 Teams (${teams.length})` }] : []),
+    { key: 'overview', label: 'Overview' },
+    { key: 'details', label: 'Details' },
+    { key: 'formbuilder', label: 'Form Builder' },
+    { key: 'participants', label: `Participants (${registrations.length})` },
+    ...(isPaidEvent ? [{ key: 'payments', label: `Payments (${pendingPayments.length})` }] : []),
+    ...(event.type === 'Merchandise' ? [{ key: 'inventory', label: 'Inventory' }] : []),
+    ...(event.isTeamEvent ? [{ key: 'teams', label: `Teams (${teams.length})` }] : []),
+    { key: 'forum', label: 'Forum' },
   ];
 
   const hasActiveRegistrations = registrations.some(r => r.statuses !== 'Cancelled' && r.statuses !== 'Rejected');
@@ -242,7 +244,6 @@ const EventManagePage = () => {
             borderRadius: '12px', padding: '14px 18px', marginBottom: '1.5rem',
             display: 'flex', alignItems: 'center', gap: '10px'
           }}>
-            <span style={{ fontSize: '1.2rem' }}>🚫</span>
             <span style={{ color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>
               This event is closed. No further changes are allowed.
             </span>
@@ -290,12 +291,11 @@ const EventManagePage = () => {
                 <h3 style={{ fontWeight: 700, marginBottom: '1.2rem', fontSize: '1.1rem' }}>Dates & Deadlines</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {[
-                    { label: 'Start Date', value: fmtIST(event.startDate), icon: '🟢' },
-                    { label: 'End Date', value: fmtIST(event.endDate), icon: '🔴' },
-                    { label: 'Registration Deadline', value: fmtIST(event.registrationDeadline), icon: '⏰' },
+                    { label: 'Start Date', value: fmtIST(event.startDate) },
+                    { label: 'End Date', value: fmtIST(event.endDate) },
+                    { label: 'Registration Deadline', value: fmtIST(event.registrationDeadline) },
                   ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
                       <div>
                         <div style={{ color: '#888', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>{item.label}</div>
                         <div style={{ fontWeight: 600, color: '#e0e0e0', fontSize: '1rem' }}>{item.value}</div>
@@ -314,7 +314,7 @@ const EventManagePage = () => {
 
             {/* Analytics Section */}
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '2rem', marginBottom: '2rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1.5rem', fontSize: '1.1rem' }}>📊 Analytics</h3>
+              <h3 style={{ fontWeight: 700, marginBottom: '1.5rem', fontSize: '1.1rem' }}>Analytics</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '1.5rem' }}>
                 {[
                   { label: 'Total Registrations', value: totalRegs, color: '#60a5fa' },
@@ -374,7 +374,6 @@ const EventManagePage = () => {
                 borderRadius: '12px', padding: '12px 16px', marginBottom: '1.5rem',
                 display: 'flex', alignItems: 'center', gap: '10px'
               }}>
-                <span style={{ fontSize: '1.2rem' }}>🚫</span>
                 <span style={{ color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>
                   This event is closed. No changes allowed.
                 </span>
@@ -386,7 +385,6 @@ const EventManagePage = () => {
                 borderRadius: '12px', padding: '12px 16px', marginBottom: '1.5rem',
                 display: 'flex', alignItems: 'center', gap: '10px'
               }}>
-                <span style={{ fontSize: '1.2rem' }}>🔒</span>
                 <span style={{ color: '#f59e0b', fontSize: '0.9rem', fontWeight: 600 }}>
                   This event has {registrations.filter(r => r.statuses !== 'Cancelled' && r.statuses !== 'Rejected').length} registration(s). Only the status can be changed.
                 </span>
@@ -470,7 +468,7 @@ const EventManagePage = () => {
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <div>
-                <h3 style={{ fontWeight: 700, marginBottom: '4px' }}>{event.type === 'Merchandise' ? '📋 Order Form Fields' : '📋 Registration Form Fields'}</h3>
+                <h3 style={{ fontWeight: 700, marginBottom: '4px' }}>{event.type === 'Merchandise' ? 'Order Form Fields' : 'Registration Form Fields'}</h3>
                 <p style={{ color: '#666', fontSize: '0.85rem' }}>
                   {isClosed
                     ? 'Form cannot be edited — this event is closed.'
@@ -489,7 +487,6 @@ const EventManagePage = () => {
                 borderRadius: '12px', padding: '12px 16px', marginBottom: '1.5rem',
                 display: 'flex', alignItems: 'center', gap: '10px'
               }}>
-                <span style={{ fontSize: '1.2rem' }}>🚫</span>
                 <span style={{ color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>
                   This event is closed. Form fields cannot be modified.
                 </span>
@@ -500,7 +497,6 @@ const EventManagePage = () => {
                 borderRadius: '12px', padding: '12px 16px', marginBottom: '1.5rem',
                 display: 'flex', alignItems: 'center', gap: '10px'
               }}>
-                <span style={{ fontSize: '1.2rem' }}>🔒</span>
                 <span style={{ color: '#f59e0b', fontSize: '0.9rem', fontWeight: 600 }}>
                   Form fields are locked because {registrations.filter(r => r.statuses !== 'Cancelled' && r.statuses !== 'Rejected').length} participant(s) have already registered.
                 </span>
@@ -618,7 +614,7 @@ const EventManagePage = () => {
                             {reg.paymentProof ? (
                               <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${reg.paymentProof}`} target="_blank" rel="noreferrer" style={{
                                 color: '#3b82f6', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 600
-                              }}>📎 Proof</a>
+                              }}>Proof</a>
                             ) : (
                               <span style={{ color: event.price > 0 ? '#f59e0b' : '#666', fontSize: '0.8rem' }}>
                                 {event.price > 0 ? 'No proof' : 'Free'}
@@ -660,7 +656,7 @@ const EventManagePage = () => {
                         background: 'rgba(59,130,246,0.02)'
                       }}>
                         <div style={{ padding: '12px 0 4px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3b82f6' }}>📋 Form Responses</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3b82f6' }}>Form Responses</span>
                           <span style={{ color: '#555', fontSize: '0.75rem' }}>{reg.participant?.college || ''} • {reg.participant?.participantType || ''} • {reg.participant?.contactNumber || ''}</span>
                         </div>
 
@@ -676,7 +672,7 @@ const EventManagePage = () => {
                                 </div>
                                 <div style={{ color: '#e0e0e0', fontSize: '0.9rem', wordBreak: 'break-word' }}>
                                   {typeof resp.value === 'string' && resp.value.startsWith('/uploads/')
-                                    ? <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${resp.value}`} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>📎 View File</a>
+                                    ? <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${resp.value}`} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>View File</a>
                                     : Array.isArray(resp.value)
                                       ? resp.value.join(', ')
                                       : String(resp.value || '—')}
@@ -690,7 +686,7 @@ const EventManagePage = () => {
 
                         {reg.selectedVariants?.length > 0 && (
                           <div style={{ marginTop: '10px' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#a855f7' }}>🛒 Selected Variants: </span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#a855f7' }}>Selected Variants: </span>
                             <span style={{ color: '#ccc', fontSize: '0.85rem' }}>
                               {reg.selectedVariants.map(v => `${v.name}: ${v.option}`).join(' • ')}
                             </span>
@@ -711,7 +707,7 @@ const EventManagePage = () => {
         {/* Teams Tab (Team events only) */}
         {tab === 'teams' && (
           <div>
-            <h3 style={{ marginBottom: '1rem', fontWeight: 700 }}>🏆 Teams ({teams.length})</h3>
+            <h3 style={{ marginBottom: '1rem', fontWeight: 700 }}>Teams ({teams.length})</h3>
             {teams.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px' }}>
                 <p style={{ color: '#666' }}>No teams formed yet</p>
@@ -789,7 +785,7 @@ const EventManagePage = () => {
                           <p style={{ color: '#888', fontSize: '0.85rem' }}>{reg.participant?.email}</p>
                           {reg.selectedVariants?.length > 0 && (
                             <p style={{ color: '#a855f7', fontSize: '0.85rem', marginTop: '4px' }}>
-                              🛒 {reg.selectedVariants.map(v => `${v.name}: ${v.option || v.variant || ''}${v.quantity > 1 ? ` ×${v.quantity}` : ''}`).join(' • ')}
+                              {reg.selectedVariants.map(v => `${v.name}: ${v.option || v.variant || ''}${v.quantity > 1 ? ` ×${v.quantity}` : ''}`).join(' • ')}
                               {reg.quantity > 1 && <span style={{ color: '#888', marginLeft: '8px' }}>(Total qty: {reg.quantity})</span>}
                             </p>
                           )}
@@ -801,7 +797,7 @@ const EventManagePage = () => {
                             padding: '8px 14px', background: 'rgba(59,130,246,0.15)',
                             border: '1px solid rgba(59,130,246,0.3)', borderRadius: '10px',
                             color: '#3b82f6', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600
-                          }}>📎 View Proof</a>
+                          }}>View Proof</a>
                         ) : (
                           <span style={{ padding: '8px 14px', borderRadius: '10px', fontSize: '0.8rem', color: '#888',
                             background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>No proof yet</span>
@@ -829,7 +825,7 @@ const EventManagePage = () => {
                         background: 'rgba(245,158,11,0.02)'
                       }}>
                         <div style={{ padding: '12px 0 4px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f59e0b' }}>📋 Registration Details</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f59e0b' }}>Registration Details</span>
                           <span style={{ color: '#555', fontSize: '0.75rem' }}>{reg.participant?.college || ''} • {reg.participant?.participantType || ''} • {reg.participant?.contactNumber || ''}</span>
                           <span style={{ color: '#555', fontSize: '0.75rem', marginLeft: 'auto' }}>Ticket: {reg.ticketID}</span>
                         </div>
@@ -846,7 +842,7 @@ const EventManagePage = () => {
                                 </div>
                                 <div style={{ color: '#e0e0e0', fontSize: '0.9rem', wordBreak: 'break-word' }}>
                                   {typeof resp.value === 'string' && resp.value.startsWith('/uploads/')
-                                    ? <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${resp.value}`} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>📎 View File</a>
+                                    ? <a href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}${resp.value}`} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>View File</a>
                                     : Array.isArray(resp.value)
                                       ? resp.value.join(', ')
                                       : String(resp.value || '—')}
@@ -861,7 +857,7 @@ const EventManagePage = () => {
                         {/* Selected Variants & Quantity */}
                         {reg.selectedVariants?.length > 0 && (
                           <div style={{ marginTop: '12px', padding: '12px 16px', background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: '10px' }}>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#a855f7', marginBottom: '8px' }}>🛒 Order Details</div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#a855f7', marginBottom: '8px' }}>Order Details</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                               {reg.selectedVariants.map((sv, si) => (
                                 <span key={si} style={{
@@ -891,7 +887,7 @@ const EventManagePage = () => {
         {/* Inventory Tab (Merchandise only) */}
         {tab === 'inventory' && (
           <div>
-            <h3 style={{ marginBottom: '1rem', color: '#a855f7' }}>📦 Variant Inventory</h3>
+            <h3 style={{ marginBottom: '1rem', color: '#a855f7' }}>Variant Inventory</h3>
             {(!event.variants || event.variants.length === 0) ? (
               <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px' }}>
                 <p style={{ color: '#666' }}>No variants configured for this merchandise event</p>
@@ -931,10 +927,22 @@ const EventManagePage = () => {
                 marginTop: '16px', padding: '12px 16px', borderRadius: '12px',
                 background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
                 color: '#3b82f6', fontSize: '0.9rem',
-              }}>ℹ️ Purchase limit: {event.purchaseLimitPerUser} per user</div>
+              }}>Purchase limit: {event.purchaseLimitPerUser} per user</div>
             )}
           </div>
-        )}      </div>
+        )}
+
+        {/* Forum Tab */}
+        {tab === 'forum' && (
+          <div>
+            <h3 style={{ fontWeight: 700, marginBottom: '1rem' }}>Discussion Forum</h3>
+            <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Moderate the discussion forum for this event. You can delete or pin messages, post announcements, and respond to participant queries.
+            </p>
+            <DiscussionForum eventId={id} isOrganizer={true} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

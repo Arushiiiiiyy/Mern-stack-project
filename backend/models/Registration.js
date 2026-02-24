@@ -1,26 +1,26 @@
 import mongoose from 'mongoose';
 
 const registrationSchema = new mongoose.Schema({
-    // Reference to the user who is attending
+
     participant: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    // Reference to the event being attended
+
     event: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Event',
         required: true
     },
-    // Stores answers to the organizer's custom form fields
+
     responses : [
         {
             label: String,
-            value: mongoose.Schema.Types.Mixed // Can store strings, numbers, or file paths
+            value: mongoose.Schema.Types.Mixed 
         }
     ],
-    // Unique ID for the ticket
+
     ticketID: {
         type: String,
         unique: true,

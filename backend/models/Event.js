@@ -48,6 +48,11 @@ const eventSchema=new mongoose.Schema({
 
 }, {timestamps:true});
 
+// Ensure registeredCount never goes negative
+eventSchema.pre('save', function () {
+    if (this.registeredCount < 0) this.registeredCount = 0;
+});
+
 const Event=mongoose.model('Event',eventSchema);
 export default Event;
 

@@ -116,7 +116,7 @@ const BrowseEvents = () => {
               cursor: 'pointer', fontWeight: 600
             }}
           >
-            🏢 Followed Clubs
+             Followed Clubs
           </button>
 
           <button
@@ -204,7 +204,7 @@ const BrowseEvents = () => {
                     fontSize: '0.8rem', color: '#3b82f6', fontWeight: 600, marginBottom: '8px',
                     display: 'flex', alignItems: 'center', gap: '6px'
                   }}>
-                    🏢 {event.organizer.name}
+                     {event.organizer.name}
                   </div>
                 )}
                 <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '8px' }}>{event.name}</h2>
@@ -212,8 +212,8 @@ const BrowseEvents = () => {
                   {event.description}
                 </p>
                 <div style={{ fontSize: '0.85rem', color: '#999', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span>📅 {new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</span>
-                  <span>📍 {event.venue}</span>
+                  <span> {new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span> {event.venue}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   <span style={{ fontWeight: 700, color: '#22c55e', fontSize: '1.1rem' }}>

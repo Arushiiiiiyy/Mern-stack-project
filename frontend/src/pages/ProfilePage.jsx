@@ -285,7 +285,7 @@ const ProfilePage = () => {
           background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '20px', padding: '2rem', marginTop: '1.5rem'
         }}>
-          <h3 style={{ marginBottom: '1rem' }}>🔑 Security</h3>
+          <h3 style={{ marginBottom: '1rem' }}> Security</h3>
 
           {profile.role === 'participant' && (
             <>

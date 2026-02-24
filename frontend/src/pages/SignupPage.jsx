@@ -48,6 +48,7 @@ const SignUpPage = () => {
       const { data } = await register(payload);
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role);
+      localStorage.setItem('userId', data._id);
       alert('Signup Successful');
       navigate('/onboarding');
     } catch (error) {

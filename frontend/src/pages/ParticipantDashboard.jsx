@@ -42,9 +42,9 @@ const ParticipantDashboard = () => {
   }, [location.key]);
 
   const now = new Date();
-  // Active/upcoming: event hasn't ended yet and registration is not cancelled/rejected
+
   const upcoming = registrations.filter(r => r.event && new Date(r.event.endDate) >= now && r.statuses !== 'Cancelled' && r.statuses !== 'Rejected');
-  // Past normal events (completed)
+
   const normalCompleted = registrations.filter(r => r.event && new Date(r.event.endDate) < now && r.event.type === 'Normal' && r.statuses !== 'Cancelled' && r.statuses !== 'Rejected');
   const merchHistory = registrations.filter(r => r.event?.type === 'Merchandise');
   const cancelled = registrations.filter(r => r.statuses === 'Cancelled' || r.statuses === 'Rejected');
@@ -113,7 +113,7 @@ const ParticipantDashboard = () => {
             <p style={{ color: '#666' }}>Your participation dashboard</p>
           </div>
           <button onClick={handleExportCalendar} style={{ padding: '10px 20px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '12px', color: '#3b82f6', fontWeight: 600, cursor: 'pointer' }}>
-            📅 Export All to Calendar
+            Export All to Calendar
           </button>
         </div>
 
@@ -132,7 +132,7 @@ const ParticipantDashboard = () => {
           <div style={{ textAlign: 'center', padding: '4rem', color: '#666' }}>Loading...</div>
         ) : getActiveData().length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <p style={{ fontSize: '2rem', marginBottom: '8px' }}>📭</p>
+            <p style={{ fontSize: '2rem', marginBottom: '8px' }}></p>
             <p style={{ color: '#666' }}>No events in this category</p>
           </div>
         ) : (
@@ -161,14 +161,14 @@ const ParticipantDashboard = () => {
                       padding: '8px 16px', background: 'rgba(59,130,246,0.15)',
                       border: '1px solid rgba(59,130,246,0.3)', borderRadius: '10px',
                       color: '#3b82f6', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
-                    }}>🎫 {reg.ticketID}</button>
+                    }}> {reg.ticketID}</button>
                   )}
                   {reg.statuses === 'Pending' && (
                     <span style={{
                       padding: '8px 16px', background: 'rgba(245,158,11,0.1)',
                       border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px',
                       color: '#f59e0b', fontSize: '0.85rem', fontWeight: 600
-                    }}>⏳ Pending Approval</span>
+                    }}> Pending Approval</span>
                   )}
                   {reg.statuses !== 'Cancelled' && activeTab === 'upcoming' && (
                     <button onClick={() => handleCancel(reg._id)} style={{
@@ -192,14 +192,14 @@ const ParticipantDashboard = () => {
               background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
               borderRadius: '10px', color: '#3b82f6', padding: '6px 16px',
               cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
-            }}>🔄 Refresh</button>
+            }}>Refresh</button>
           </div>
           <p style={{ color: '#666', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
             Events from clubs you follow — follow or unfollow clubs to update these
           </p>
           {recommended.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <p style={{ fontSize: '2rem', marginBottom: '8px' }}>🔍</p>
+              <p style={{ fontSize: '2rem', marginBottom: '8px' }}></p>
               <p style={{ color: '#888', marginBottom: '16px', lineHeight: 1.6 }}>
                 Follow clubs to see their upcoming events here.<br />
                 Recommendations update automatically when you follow or unfollow a club!
@@ -209,7 +209,7 @@ const ParticipantDashboard = () => {
                   padding: '10px 24px', background: 'rgba(34,197,94,0.15)',
                   border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px',
                   color: '#22c55e', fontWeight: 600, cursor: 'pointer'
-                }}>🏢 Browse & Follow Clubs</button>
+                }}> Browse & Follow Clubs</button>
               </div>
             </div>
           ) : (
@@ -230,8 +230,8 @@ const ParticipantDashboard = () => {
                     {event.description}
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#666' }}>
-                    <span>📅 {new Date(event.startDate).toLocaleDateString()}</span>
-                    {event.organizer && <span>🏢 {event.organizer.name}</span>}
+                    <span>{new Date(event.startDate).toLocaleDateString()}</span>
+                    {event.organizer && <span> {event.organizer.name}</span>}
                   </div>
                   {event.tags?.length > 0 && (
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}>

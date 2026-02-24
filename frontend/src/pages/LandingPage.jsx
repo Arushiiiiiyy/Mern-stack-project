@@ -21,6 +21,7 @@ const LandingPage = () => {
           // Token is invalid/expired — clear it
           localStorage.removeItem('token');
           localStorage.removeItem('role');
+          localStorage.removeItem('userId');
         });
     }
   }, [navigate]);
@@ -72,7 +73,7 @@ const LandingPage = () => {
             width: '56px', height: '56px', borderRadius: '16px',
             background: 'rgba(59,130,246,0.15)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', fontSize: '1.8rem'
-          }}>🎉</div>
+          }}></div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>Participant</h2>
           <p style={{ color: '#aaa', marginBottom: '1.5rem', lineHeight: 1.5 }}>
             IIIT Students & External Guests
@@ -98,7 +99,7 @@ const LandingPage = () => {
             width: '56px', height: '56px', borderRadius: '16px',
             background: 'rgba(34,197,94,0.15)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', fontSize: '1.8rem'
-          }}>📋</div>
+          }}></div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>Organizer</h2>
           <p style={{ color: '#aaa', marginBottom: '8px', lineHeight: 1.5 }}>
             Club Leads & Event Heads
@@ -129,7 +130,7 @@ const LandingPage = () => {
             width: '56px', height: '56px', borderRadius: '16px',
             background: 'rgba(239,68,68,0.15)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', fontSize: '1.8rem'
-          }}>🔒</div>
+          }}></div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>Admin</h2>
           <p style={{ color: '#aaa', marginBottom: '8px', lineHeight: 1.5 }}>
             System Administrators

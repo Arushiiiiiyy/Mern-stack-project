@@ -20,7 +20,6 @@ const OrganizerLogin = () => {
     try {
       const { data } = await login(formData);
 
-      // SECURITY GATE: Strict Role Check (Matches your DB spelling 'organizer')
       if (data.role !== 'organizer' && data.role !== 'admin') {
         setError('SECURITY BREACH: You are not authorized as an Organizer.');
         localStorage.removeItem('token');
@@ -29,6 +28,7 @@ const OrganizerLogin = () => {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role);
+      localStorage.setItem('userId', data._id);
       if (data.role === 'admin') {
         navigate('/admin-dashboard');
       } else if (data.role === 'organizer') {

@@ -9,9 +9,9 @@ const INTEREST_OPTIONS = [
 ];
 
 const CATEGORY_ICONS = {
-  'Cultural': '🎭', 'Technical': '💻', 'Sports & Fitness': '🏅',
-  'Gaming & E-Sports': '🎮', 'Literary & Debating': '📚', 'Entrepreneurship': '🚀',
-  'Social Service': '🤝', 'General': '⭐'
+  'Cultural': 'Cultural', 'Technical': 'Technical', 'Sports & Fitness': 'Sports & Fitness',
+  'Gaming & E-Sports': 'Gaming & E-Sports', 'Literary & Debating': 'Literary & Debating', 'Entrepreneurship': 'Entrepreneurship',
+  'Social Service': 'Social Service', 'General': 'General'
 };
 
 const OnboardingPage = () => {
@@ -208,7 +208,7 @@ const OnboardingPage = () => {
                   padding: '12px 28px', background: '#3b82f6', border: 'none',
                   borderRadius: '12px', color: '#fff', fontWeight: 700, cursor: 'pointer'
                 }}
-              >{loading ? 'Saving...' : 'Get Started 🚀'}</button>
+              >{loading ? 'Saving...' : 'Get Started '}</button>
             </div>
           </>
         )}

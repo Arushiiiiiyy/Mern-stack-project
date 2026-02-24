@@ -110,7 +110,7 @@ const AdminDashboard = () => {
               background: tab === t ? 'rgba(139,92,246,0.25)' : 'rgba(255,255,255,0.04)',
               border: `1.5px solid ${tab === t ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
               color: tab === t ? '#a78bfa' : '#bbb', transition: 'all 0.2s'
-            }}>{t === 'organizers' ? '🏢 Organizers' : '🔑 Password Resets'}</button>
+            }}>{t === 'organizers' ? ' Organizers' : ' Password Resets'}</button>
           ))}
         </div>
 
@@ -267,7 +267,7 @@ const AdminDashboard = () => {
                   </p>
                 )}
                 <div style={{ padding: '12px 16px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', color: '#4ade80', fontSize: '0.85rem' }}>
-                  🔐 Password will be auto-generated and shown after creation
+                   Password will be auto-generated and shown after creation
                 </div>
                 <select value={addForm.category} onChange={e => setAddForm({ ...addForm, category: e.target.value })} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }} required>
                   <option value="" disabled>Select Category</option>
@@ -335,7 +335,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <p style={{ color: '#f59e0b', fontSize: '0.85rem', lineHeight: 1.6, textAlign: 'center', marginBottom: '16px' }}>
-                ⚠️ Share this password with the organizer securely. It won't be shown again.
+                 Share this password with the organizer securely. It won't be shown again.
               </p>
               <button onClick={() => setShowPasswordModal(null)} style={{
                 width: '100%', padding: '12px', background: 'rgba(255,255,255,0.06)',

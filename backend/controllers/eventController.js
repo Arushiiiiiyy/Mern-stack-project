@@ -64,11 +64,11 @@ export const createEvent = async (req, res) => {
             description: description?.slice(0, 300) || '',
             color: type === 'Merchandise' ? 0xa855f7 : 0x3b82f6,
             fields: [
-              { name: '📅 Date', value: dateStr, inline: true },
-              { name: '📍 Venue', value: venue, inline: true },
-              { name: '💰 Price', value: price > 0 ? `₹${price}` : 'Free', inline: true },
-              { name: '👥 Capacity', value: `${limit}`, inline: true },
-              { name: '🏷️ Type', value: type, inline: true }
+              { name: ' Date', value: dateStr, inline: true },
+              { name: ' Venue', value: venue, inline: true },
+              { name: ' Price', value: price > 0 ? `₹${price}` : 'Free', inline: true },
+              { name: ' Capacity', value: `${limit}`, inline: true },
+              { name: ' Type', value: type, inline: true }
             ],
             footer: { text: `By ${organizer.name} • Felicity 2026` },
             timestamp: new Date().toISOString()

@@ -1,305 +1,237 @@
-# Felicity 2026 — Event Management System
+# **Felicity 2026 – Event Management System** 
 
-A full-stack MERN application for managing IIIT Hyderabad's annual fest **Felicity 2026**. Supports event creation, participant registration, merchandise sales, team hackathons, QR-based attendance, real-time discussion forums, and organizer analytics.
-
----
+The platform supports three roles: participant, organizer and admin. Each role has clearly defined permissions and dashboards.
 
 ## Tech Stack
 
-| Layer     | Technology                                                      |
-| --------- | --------------------------------------------------------------- |
-| Frontend  | React 19, Vite 7, React Router 7, Axios, Socket.io-client      |
-| Backend   | Node.js, Express 5, Socket.io 4, JWT, Multer, Nodemailer       |
-| Database  | MongoDB Atlas (Mongoose 9)                                      |
-| Auth      | JWT (30-day expiry), bcrypt (salt rounds 10)                    |
-| Email     | Nodemailer (Gmail SMTP / Ethereal dev fallback)                 |
-| QR        | `qrcode` (server-side generation), `react-qr-code` (client)    |
+### **Frontend**
+React (Vite setup), React Router, Axios, Socket.io-client
 
----
+### Backend
+Node.js, Express, Socket.io, JWT authentication, bcrypt, Multer, Nodemailer
 
-## Quick Start
+### Database
+MongoDB Atlas using Mongoose
 
-### Prerequisites
+Authentication
+JWT tokens with 30-day expiry
+Passwords hashed using bcrypt (salt rounds 10)
 
-- Node.js ≥ 18
-- MongoDB Atlas cluster (or local MongoDB)
-- (Optional) Gmail App Password for email
+Email
+Nodemailer with Gmail SMTP (Ethereal fallback for development)
 
-### 1. Clone & install
+QR Codes
+Server-side QR generation using qrcode package
+Client-side QR rendering using react-qr-code
 
-```bash
-git clone <repo-url> && cd Mern-stack-project
+Running the Project Locally
 
-# Backend
-cd backend && npm install
+Prerequisites
+Node.js version 18 or above
+MongoDB Atlas cluster (or local MongoDB)
+Optional: Gmail App password for sending real emails
 
-# Frontend
-cd ../frontend && npm install
-```
+### Installation Steps
 
-### 2. Configure environment
+Clone the repository and install dependencies:
 
-Create `backend/.env`:
+git clone https://github.com/Arushiiiiiyy/Mern-stack-project.git
+cd Mern-stack-project
 
-```env
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster0.xxx.mongodb.net/mydb
-JWT_SECRET=<your-secret>
+Backend setup
+cd backend
+npm install
+
+Frontend setup
+cd ../frontend
+npm install
+
+Create a .env file inside backend folder:
+
+MONGO_URI=your_mongodb_connection
+JWT_SECRET=your_secret_key
 PORT=3000
 
-# Email (optional — falls back to Ethereal test account)
+Optional email configuration:
+
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-SMTP_FROM="Felicity 2026" <noreply@felicity.iiit.ac.in>
-```
+SMTP_USER=your_email@gmail.com
 
-### 3. Run
+SMTP_PASS=your_app_password
+SMTP_FROM="Felicity 2026" noreply@felicity.iiit.ac.in
 
-```bash
-# Terminal 1 — Backend
-cd backend && npm run dev
+Start the servers:
 
-# Terminal 2 — Frontend
-cd frontend && npm run dev
-```
+Backend
+cd backend
+npm run dev
 
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:3000/api`
+Frontend
+cd frontend
+npm run dev
 
----
+Frontend runs on http://localhost:5173
 
-## Project Structure
+Backend runs on http://localhost:3000/api
 
-```
-backend/
-├── config/db.js              # MongoDB connection
-├── controllers/              # Route handlers
-│   ├── adminController.js    # Admin CRUD, password reset approval
-│   ├── authController.js     # Login / Register
-│   ├── calendarController.js # ICS & Google/Outlook calendar links
-│   ├── eventController.js    # Event CRUD, analytics, CSV export
-│   ├── forumController.js    # Discussion forum (REST + Socket.io)
-│   ├── registrationController.js  # Registration, QR, attendance
-│   ├── teamController.js     # Hackathon team management
-│   └── userController.js     # Profile, preferences, password change
-├── middleware/authMiddleware.js  # JWT protect, role guards
-├── models/                   # Mongoose schemas
-│   ├── Event.js              # Event + form fields + variants
-│   ├── Message.js            # Forum messages + threading
-│   ├── Registration.js       # Tickets, status history, responses
-│   ├── Team.js               # Hackathon teams
-│   └── User.js               # Users + virtual name + bcrypt hooks
-├── routes/                   # Express routers
-├── utils/sendEmail.js        # Email templates (registration, QR, reset)
-└── server.js                 # App entry, Socket.io setup
+### Folder Structure Overview
 
-frontend/src/
-├── api.js                    # Axios instance + JWT interceptor
-├── App.jsx                   # Route definitions
-├── components/
-│   ├── DiscussionForum.jsx   # Real-time chat (Socket.io)
-│   ├── FormBuilder.jsx       # Dynamic form field editor
-│   └── Navbar.jsx            # Navigation bar
-└── pages/
-    ├── AdminDashboard.jsx    # Admin panel
-    ├── CreateEvent.jsx       # Event creation form
-    ├── EventManagePage.jsx   # Organizer event management + form responses
-    ├── OrganizerDashboard.jsx # Dashboard with analytics
-    ├── ParticipantDashboard.jsx # Participant registrations + QR tickets
-    ├── TeamPage.jsx          # Team creation / joining
-    └── ...                   # Landing, Login, Signup, Profile, etc.
-```
+Backend contains:
 
----
+config folder for database connection
+controllers for handling all route logic (auth, events, admin, teams, forum, registrations etc.)
+middleware for JWT authentication and role-based access
+models for Mongoose schemas (User, Event, Registration, Team, Message)
+routes for Express routers
+utils folder for sending emails
+server.js as the main entry file
 
-## Features Implemented
+### Frontend contains:
 
-### Core (Required)
+api.js for Axios configuration and token interceptor
+App.jsx for route definitions
+components folder for reusable components like Navbar, FormBuilder and DiscussionForum
+pages folder for dashboards, event creation, team page, profile, login and signup
 
-| # | Feature | Details |
-|---|---------|---------|
-| 1 | **User Authentication** | JWT-based login/register, role-based access (participant, organizer, admin) |
-| 2 | **Organizer Management** | Admin creates organizer accounts, organizer CRUD for events |
-| 3 | **Event CRUD** | Create, edit, delete events with status lifecycle (Draft → Published → Ongoing → Completed → Closed) |
-| 4 | **Dynamic Form Builder** | Organizers define custom registration fields (text, number, dropdown, checkbox, file upload) |
-| 5 | **Browse & Filter Events** | Search, filter by type/eligibility/date, trending events |
-| 6 | **Event Registration** | Register with custom form responses, eligibility checks, capacity limits |
-| 7 | **Ticket Generation** | UUID-based ticket IDs (`FEL-XXXXXXXX`), HMAC-SHA256 signed QR codes |
-| 8 | **QR Code Email** | QR code embedded as inline image in confirmation email |
-| 9 | **Attendance Tracking** | QR scan → mark attendance, duplicate scan rejection |
-| 10 | **Participant Dashboard** | View upcoming/past/merchandise/cancelled registrations with QR tickets |
-| 11 | **Organizer Dashboard** | Event management with analytics (registrations, revenue, fill rate, attendance rate) |
-| 12 | **Participant Preferences** | Interest-based + followed-club recommendation engine |
-| 13 | **Password Security** | bcrypt hashing, min 8 chars with uppercase/lowercase/number/special, strong generated passwords |
-| 14 | **IIIT Email Validation** | IIIT participants must register with `iiit.ac.in` email |
+### Core Features Implemented
 
-### Tier A — Hackathon Team Registration + Merchandise Payment Approval
+User Authentication
+JWT-based login and registration with role-based access control. Participants can register themselves. Organizers are created only by admin. Admin account is seeded in backend.
 
-| Feature | Details |
-|---------|---------|
-| **Team Registration** | Create team → invite code → join → auto-register all members on completion |
-| **Multi-team Prevention** | User cannot join multiple teams for the same event |
-| **Merchandise Orders** | Variant selection, quantity, payment proof upload |
-| **Payment Approval** | Organizer approve/reject with comments; stock decremented only on approval |
-| **Status History** | Full audit trail of status changes with timestamps |
+#### Event Management
+Organizers can create, edit and manage events with proper lifecycle states: Draft, Published, Ongoing, Completed and Closed.
 
-### Tier B — Real-Time Discussion Forum + Organizer Password Reset
+#### Dynamic Form Builder
+Organizers can define custom registration fields (text, dropdown, checkbox, file upload etc.). The form gets locked after the first registration to prevent inconsistent data.
 
-| Feature | Details |
-|---------|---------|
-| **Discussion Forum** | Socket.io real-time messaging per event, threaded replies, emoji reactions |
-| **Message Moderation** | Organizers can delete messages, pinned messages support |
-| **Password Reset Flow** | Organizer requests → admin approves/rejects → new password emailed securely |
-| **Reset History** | Full history of all password reset requests with reasons and outcomes |
+#### Event Registration
+Participants can register for events. Eligibility and capacity limits are validated before allowing registration.
 
-### Tier C — Add to Calendar Integration
+#### Ticket and QR Generation
+Each registration generates a unique ticket ID in the format FEL-XXXXXXXX. A QR code is generated and emailed to the participant.
 
-| Feature | Details |
-|---------|---------|
-| **ICS Export** | Download `.ics` file for single or batch events |
-| **Google Calendar** | Direct "Add to Google Calendar" link with IST timezone |
-| **Outlook Calendar** | Direct "Add to Outlook" link |
+#### Attendance Tracking
+Organizers can scan or verify QR codes to mark attendance. Duplicate scans are rejected.
 
-### Additional Features
+#### Participant Dashboard
+Participants can view upcoming events, completed events, merchandise orders and cancelled registrations.
 
-| Feature | Details |
-|---------|---------|
-| **CSV Export** | Export registrations with custom form field responses included |
-| **Discord Webhook** | Auto-post new events to organizer's Discord channel |
-| **Event State Machine** | Strict status transitions: Draft→Published→Ongoing→Completed→Closed |
-| **Form Builder Lock** | Form fields locked after first registration |
-| **QR Tamper Prevention** | HMAC-SHA256 signed QR payloads with backend verification endpoint |
-| **Organizer Form Responses** | Expandable participant rows showing all custom form field answers |
-| **Organizer Analytics** | Per-event: registrations, confirmed, pending, attended, fill rate, attendance rate, revenue |
-| **Admin Dashboard** | Manage organizers (add/disable/archive), approve password resets |
+#### Organizer Dashboard
+Organizers can see analytics including total registrations, revenue, fill rate and attendance rate for each event.
 
----
+#### Participant Preferences
+Participants can select areas of interest and follow clubs. These preferences influence event recommendations.
 
-## API Endpoints
+#### Password Security
+Passwords are hashed using bcrypt. Password strength rules are enforced.
 
-### Auth (`/api/auth`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | `/register` | Register participant |
-| POST | `/login` | Login (returns JWT) |
+#### IIIT Email Validation
+Participants registering as IIIT students must use iiit.ac.in email domain.
 
-### Events (`/api/events`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/` | Browse published events |
-| GET | `/recommended` | Personalized recommendations |
-| GET | `/my-events` | Organizer's own events |
-| GET | `/analytics` | Organizer analytics dashboard data |
-| POST | `/` | Create event |
-| GET | `/:id` | Get event details |
-| PUT | `/:id` | Update event |
-| GET | `/:id/registrations` | Get event registrations (organizer) |
-| GET | `/:id/registrations/export` | Export CSV |
+### Advanced Features Implemented
 
-### Registrations (`/api/registrations`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/my-registrations` | Participant's registrations |
-| POST | `/verify-qr` | Verify QR code (organizer) |
-| POST | `/:eventId` | Register for event |
-| GET | `/:id/qr` | Get ticket QR code |
-| PUT | `/:id/cancel` | Cancel registration |
-| PUT | `/:id/payment-proof` | Upload payment proof |
-| PUT | `/:id/approve` | Approve/reject payment (organizer) |
-| PUT | `/:id/attend` | Mark attendance (organizer) |
+### Tier A Features
 
-### Teams (`/api/teams`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | `/` | Create team |
-| POST | `/join` | Join team via invite code |
-| GET | `/my-teams` | Get user's teams |
-| GET | `/event/:eventId` | Get event teams (organizer) |
-| PUT | `/:id/leave` | Leave team |
-| DELETE | `/:id` | Cancel team (leader only) |
+#### Hackathon Team Registration
+Participants can create teams, invite members using a unique code and complete team registration only when all members join. Duplicate team membership for the same event is prevented.
 
-### Users (`/api/users`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/profile` | Get profile |
-| PUT | `/profile` | Update profile |
-| PUT | `/change-password` | Change password |
-| GET | `/organizers` | List all organizers/clubs |
-| PUT | `/follow/:id` | Follow/unfollow organizer |
+#### Merchandise Payment Approval Workflow
+Participants upload payment proof after ordering merchandise. Organizers can approve or reject orders. Stock is reduced only after approval. All status changes are stored with timestamps.
 
-### Admin (`/api/admin`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | `/organizers` | Add organizer |
-| GET | `/organizers` | List organizers |
-| PUT | `/organizers/:id/toggle` | Disable/enable organizer |
-| PUT | `/organizers/:id/archive` | Archive organizer |
-| GET | `/password-resets` | Pending password reset requests |
-| PUT | `/password-resets/:id` | Approve/reject reset |
+### Tier B Features
 
-### Calendar (`/api/calendar`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/:eventId/ics` | Download ICS file |
-| GET | `/:eventId/google` | Google Calendar link |
-| GET | `/:eventId/outlook` | Outlook Calendar link |
-| GET | `/batch` | Batch ICS export |
+#### Real-Time Discussion Forum
+Each event has a discussion forum implemented using Socket.io. Participants can post messages, reply to threads and react. Organizers can moderate messages.
 
-### Forum (`/api/forum`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/:eventId/messages` | Get messages |
-| POST | `/:eventId/messages` | Post message |
-| DELETE | `/messages/:id` | Delete message |
-| PUT | `/messages/:id/react` | Add reaction |
+#### Organizer Password Reset Workflow
+Organizers must request password reset through the system. Admin can approve or reject the request. Upon approval, a new password is generated and emailed. All reset requests are logged.
 
----
+### Tier C Feature
 
-## Environment Variables
+#### Add to Calendar Integration
+Participants can download .ics files for events or directly add events to Google Calendar or Outlook.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MONGO_URI` | Yes | MongoDB connection string |
-| `JWT_SECRET` | Yes | Secret for JWT signing + QR HMAC signatures |
-| `PORT` | No | Server port (default: 3000) |
-| `SMTP_HOST` | No | SMTP server (falls back to Ethereal) |
-| `SMTP_PORT` | No | SMTP port (default: 587) |
-| `SMTP_SECURE` | No | Use TLS (default: false) |
-| `SMTP_USER` | No | SMTP username |
-| `SMTP_PASS` | No | SMTP password / app password |
-| `SMTP_FROM` | No | From address for emails |
+### Additional Functionalities
 
----
+CSV export for event registrations
+Discord webhook integration for automatic event announcements
+Strict event state transition logic
+HMAC-based QR tamper prevention
+Organizer view for detailed form responses
+Admin dashboard for managing organizers and password reset approvals
 
-## Deployment
+API Overview
 
-### Production Build
+Authentication
+POST /api/auth/register
+POST /api/auth/login
 
-```bash
-# Frontend
-cd frontend && npm run build
-# Output: frontend/dist/
+Events
+GET /api/events
+POST /api/events
+PUT /api/events/:id
+GET /api/events/:id
+GET /api/events/:id/registrations
+GET /api/events/:id/registrations/export
 
-# Backend serves static files from public/
-# Copy frontend/dist to backend/public for single-server deployment
-```
+Registrations
+POST /api/registrations/:eventId
+GET /api/registrations/my-registrations
+POST /api/registrations/verify-qr
+PUT /api/registrations/:id/cancel
+PUT /api/registrations/:id/payment-proof
+PUT /api/registrations/:id/approve
+PUT /api/registrations/:id/attend
 
-### Backend
+Teams
+POST /api/teams
+POST /api/teams/join
+GET /api/teams/my-teams
+PUT /api/teams/:id/leave
+DELETE /api/teams/:id
 
-```bash
-cd backend && npm start
-```
+Users
+GET /api/users/profile
+PUT /api/users/profile
+PUT /api/users/change-password
+GET /api/users/organizers
+PUT /api/users/follow/:id
 
-Set `NODE_ENV=production` and configure proper SMTP credentials for production email delivery.
+Admin
+POST /api/admin/organizers
+PUT /api/admin/organizers/:id/toggle
+PUT /api/admin/organizers/:id/archive
+GET /api/admin/password-resets
+PUT /api/admin/password-resets/:id
 
----
+Calendar
+GET /api/calendar/:eventId/ics
+GET /api/calendar/:eventId/google
+GET /api/calendar/:eventId/outlook
 
-## Default Accounts
+Forum
+GET /api/forum/:eventId/messages
+POST /api/forum/:eventId/messages
+DELETE /api/forum/messages/:id
+PUT /api/forum/messages/:id/react
 
-An admin account can be seeded by uncommenting the admin seed block in `server.js`. Default roles:
+#### Deployment Notes
 
-- **participant** — registers via signup page
-- **organizer** — created by admin via Admin Dashboard
-- **admin** — seeded or created directly in DB
+Frontend can be deployed on Vercel or Netlify.
+Backend can be deployed on Render or Railway.
+MongoDB Atlas is used for production database.
+
+For single-server deployment, frontend build files can be copied into backend public folder and served statically.
+
+Default Roles
+
+Participant
+Registers through signup page
+
+Organizer
+Created by admin via admin dashboard
+
+Admin
+Seeded directly in database or through backend setup

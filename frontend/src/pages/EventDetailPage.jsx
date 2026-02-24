@@ -36,13 +36,13 @@ const EventDetailPage = () => {
         const { data } = await API.get(`/events/${id}`);
         setEvent(data);
 
-        // Check if already registered
+        
         if (role === 'participant') {
           try {
             const regs = await API.get('/registrations/my-registrations');
             const eventRegs = regs.data.filter(r => r.event?._id === id && r.statuses !== 'Cancelled');
             if (data.type === 'Merchandise') {
-              // Merchandise: track all orders, allow more purchases
+              
               setMyOrders(eventRegs);
               if (eventRegs.length > 0) {
                 setMyRegistration(eventRegs[eventRegs.length - 1]);
@@ -56,7 +56,7 @@ const EventDetailPage = () => {
             }
           } catch (e) { /* ignore */ }
 
-          // Check for existing team
+          
           try {
             const teamsRes = await API.get('/teams/my-teams');
             const eventTeam = teamsRes.data.find(t => (t.event?._id || t.event) === id && t.status !== 'Cancelled');
@@ -72,7 +72,7 @@ const EventDetailPage = () => {
     fetchEvent();
   }, [id]);
 
-  // Socket.io: Live capacity updates
+  
   useEffect(() => {
     socketRef.current = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
     const socket = socketRef.current;
@@ -93,7 +93,7 @@ const EventDetailPage = () => {
   }, [id]);
 
   const handleRegister = async () => {
-    // Validate required form fields
+   
     if (event.formFields?.length > 0) {
       for (const field of event.formFields) {
         if (field.required && (!responses[field.label] || responses[field.label].trim() === '')) {
@@ -272,30 +272,30 @@ const EventDetailPage = () => {
           )}
         </div>
 
-        {/* Info Grid */}
+        
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '16px', marginBottom: '2rem'
         }}>
           {[
-            { icon: '📅', label: 'Start', value: new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
-            { icon: '📅', label: 'End', value: new Date(event.endDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
-            { icon: '⏰', label: 'Deadline', value: new Date(event.registrationDeadline).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
-            { icon: '📍', label: 'Venue', value: event.venue },
-            { icon: '👥', label: 'Capacity', value: `${event.registeredCount} / ${event.limit}` },
-            { icon: '💰', label: 'Price', value: event.price > 0 ? `₹${event.price}` : 'Free' },
+            { label: 'Start', value: new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
+            { label: 'End', value: new Date(event.endDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
+            { label: 'Deadline', value: new Date(event.registrationDeadline).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) },
+            { label: 'Venue', value: event.venue },
+            { label: 'Capacity', value: `${event.registeredCount} / ${event.limit}` },
+            { label: 'Price', value: event.price > 0 ? `₹${event.price}` : 'Free' },
           ].map((item, i) => (
             <div key={i} style={{
               background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: '16px', padding: '16px'
             }}>
-              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{item.icon} {item.label}</div>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{item.label}</div>
               <div style={{ fontWeight: 600 }}>{item.value}</div>
             </div>
           ))}
         </div>
 
-        {/* Tags */}
+        
         {event.tags?.length > 0 && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '2rem', flexWrap: 'wrap' }}>
             {event.tags.map((tag, i) => (
@@ -308,7 +308,7 @@ const EventDetailPage = () => {
           </div>
         )}
 
-        {/* Description */}
+       
         <div style={{
           background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '16px', padding: '24px', marginBottom: '2rem'
@@ -317,24 +317,24 @@ const EventDetailPage = () => {
           <p style={{ color: '#ccc', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{event.description}</p>
         </div>
 
-        {/* Calendar Buttons */}
+    
         {role === 'participant' && (
           <div style={{ display: 'flex', gap: '12px', marginBottom: '2rem', flexWrap: 'wrap' }}>
             <button onClick={handleCalendarDownload} style={{
               padding: '10px 20px', background: 'rgba(59,130,246,0.15)',
               border: '1px solid rgba(59,130,246,0.3)', borderRadius: '12px',
               color: '#3b82f6', fontWeight: 600, cursor: 'pointer'
-            }}>📥 Download .ics</button>
+            }}>Download .ics</button>
             <button onClick={handleGoogleCalendar} style={{
               padding: '10px 20px', background: 'rgba(34,197,94,0.15)',
               border: '1px solid rgba(34,197,94,0.3)', borderRadius: '12px',
               color: '#22c55e', fontWeight: 600, cursor: 'pointer'
-            }}>📆 Add to Google Calendar</button>
+            }}>Add to Google Calendar</button>
             <button onClick={handleOutlookCalendar} style={{
               padding: '10px 20px', background: 'rgba(59,130,246,0.15)',
               border: '1px solid rgba(59,130,246,0.3)', borderRadius: '12px',
               color: '#60a5fa', fontWeight: 600, cursor: 'pointer'
-            }}>📅 Add to Outlook</button>
+            }}>Add to Outlook</button>
           </div>
         )}
 
@@ -409,13 +409,13 @@ const EventDetailPage = () => {
           </div>
         )}
 
-        {/* Existing Merchandise Orders */}
+       
         {event.type === 'Merchandise' && myOrders.length > 0 && (
           <div style={{
             background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)',
             borderRadius: '16px', padding: '24px', marginBottom: '2rem'
           }}>
-            <h3 style={{ marginBottom: '16px', color: '#a855f7' }}>📦 Your Orders ({myOrders.length})</h3>
+            <h3 style={{ marginBottom: '16px', color: '#a855f7' }}>Your Orders ({myOrders.length})</h3>
             {myOrders.map((order, oi) => (
               <div key={order._id || oi} style={{
                 padding: '14px 16px', background: 'rgba(255,255,255,0.03)',
@@ -439,7 +439,7 @@ const EventDetailPage = () => {
                   </div>
                 )}
                 {event.price > 0 && <div style={{ color: '#a855f7', fontSize: '0.85rem', fontWeight: 600, marginTop: '4px' }}>₹{event.price * (order.quantity || 1)}</div>}
-                {/* Upload payment proof for this pending order */}
+               
                 {order.statuses === 'Pending' && !order.paymentProof && (
                   <div style={{ marginTop: '10px' }}>
                     <input type="file" accept="image/*" onChange={(e) => {
@@ -447,7 +447,7 @@ const EventDetailPage = () => {
                       if (!file) return;
                       const formData = new FormData();
                       formData.append('paymentProof', file);
-                      API.post(`/registrations/${order._id}/payment-proof`, formData).then(() => {
+                      API.put(`/registrations/${order._id}/payment-proof`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(() => {
                         setMyOrders(prev => prev.map(o => o._id === order._id ? { ...o, paymentProof: 'uploaded' } : o));
                         setMessage('Payment proof uploaded!');
                       }).catch(err => setMessage(err.response?.data?.message || 'Upload failed'));
@@ -459,7 +459,7 @@ const EventDetailPage = () => {
                   </div>
                 )}
                 {order.statuses === 'Pending' && order.paymentProof && (
-                  <div style={{ color: '#3b82f6', fontSize: '0.8rem', marginTop: '6px' }}>⏳ Payment proof submitted — awaiting approval</div>
+                  <div style={{ color: '#3b82f6', fontSize: '0.8rem', marginTop: '6px' }}>Payment proof submitted — awaiting approval</div>
                 )}
               </div>
             ))}
@@ -471,7 +471,7 @@ const EventDetailPage = () => {
           </div>
         )}
 
-        {/* Merchandise Variants — Cart System */}
+      
         {canPurchaseMerch && event.variants?.length > 0 && (() => {
           const remainingLimit = event.purchaseLimitPerUser ? event.purchaseLimitPerUser - purchasedQty : null;
           const totalCartQty = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -484,7 +484,7 @@ const EventDetailPage = () => {
               setMessage(`Purchase limit is ${event.purchaseLimitPerUser} per user. You've already purchased ${purchasedQty} and have ${totalCartQty} in cart.`);
               return;
             }
-            // Check if exact same variant combo exists in cart — merge quantities
+            
             const combo = event.variants.map(v => `${v.name}:${selectedVariants[v.name]}`).join('|');
             const existingIdx = cart.findIndex(item => {
               const ic = item.variants.map(v => `${v.name}:${v.option}`).join('|');
@@ -510,9 +510,9 @@ const EventDetailPage = () => {
               background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)',
               borderRadius: '16px', padding: '24px', marginBottom: '2rem'
             }}>
-              <h3 style={{ marginBottom: '16px', color: '#a855f7' }}>🛒 Select Items</h3>
+              <h3 style={{ marginBottom: '16px', color: '#a855f7' }}>Select Items</h3>
 
-              {/* Variant pickers */}
+              
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(event.variants.length, 3)}, 1fr)`, gap: '12px', marginBottom: '14px' }}>
                 {event.variants.map((v, i) => (
                   <div key={i}>
@@ -532,7 +532,7 @@ const EventDetailPage = () => {
                 ))}
               </div>
 
-              {/* Quantity + Add to cart */}
+              
               <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', marginBottom: '16px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '6px', color: '#ccc', fontSize: '0.85rem' }}>Quantity</label>
@@ -555,7 +555,7 @@ const EventDetailPage = () => {
                 )}
               </div>
 
-              {/* Cart items */}
+           
               {cart.length > 0 && (
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '14px' }}>
                   <h4 style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '10px' }}>Your Cart ({totalCartQty} item{totalCartQty > 1 ? 's' : ''})</h4>
@@ -590,7 +590,6 @@ const EventDetailPage = () => {
           );
         })()}
 
-        {/* Register Button */}
         <div style={{ marginBottom: '2rem' }}>
           {message && (
             <div style={{
@@ -609,7 +608,7 @@ const EventDetailPage = () => {
                   background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)',
                   borderRadius: '20px', padding: '24px'
                 }}>
-                  <h3 style={{ fontWeight: 700, marginBottom: '12px' }}>👥 Your Team: {myTeam.name}</h3>
+                  <h3 style={{ fontWeight: 700, marginBottom: '12px' }}>Your Team: {myTeam.name}</h3>
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
                     <span style={{
                       padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600,
@@ -621,7 +620,7 @@ const EventDetailPage = () => {
                     </span>
                   </div>
 
-                  {/* Invite Code */}
+                 
                   {myTeam.status === 'Forming' && (
                     <div style={{
                       padding: '16px', background: 'rgba(59,130,246,0.1)',
@@ -635,11 +634,11 @@ const EventDetailPage = () => {
                           marginTop: '8px', padding: '6px 16px', background: 'rgba(59,130,246,0.2)',
                           border: '1px solid rgba(59,130,246,0.3)', borderRadius: '8px',
                           color: '#3b82f6', cursor: 'pointer', fontSize: '0.8rem'
-                        }}>📋 Copy Code</button>
+                        }}>Copy Code</button>
                     </div>
                   )}
 
-                  {/* Members list */}
+                 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
                     {myTeam.members?.map((m, i) => (
                       <div key={i} style={{
@@ -660,7 +659,7 @@ const EventDetailPage = () => {
                     ))}
                   </div>
 
-                  {/* Team actions */}
+                  
                   {myTeam.status === 'Forming' && (
                     <div style={{ display: 'flex', gap: '8px' }}>
                       {myTeam.leader?._id === localStorage.getItem('userId') || myTeam.leader?._id ? (
@@ -685,7 +684,7 @@ const EventDetailPage = () => {
                   )}
                 </div>
               ) : (
-                /* Create or Join Team */
+                
                 <div style={{
                   background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)',
                   borderRadius: '20px', padding: '24px'
@@ -697,7 +696,7 @@ const EventDetailPage = () => {
                   </p>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    {/* Create Team */}
+                    
                     <div style={{
                       background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
                       borderRadius: '16px', padding: '20px'
@@ -718,7 +717,7 @@ const EventDetailPage = () => {
                         }}>{creatingTeam ? 'Creating...' : 'Create Team'}</button>
                     </div>
 
-                    {/* Join Team */}
+                    
                     <div style={{
                       background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
                       borderRadius: '16px', padding: '20px'
@@ -740,7 +739,7 @@ const EventDetailPage = () => {
             </div>
           )}
 
-          {/* Merchandise purchase button */}
+          
           {canPurchaseMerch && cart.length > 0 && (
             <button
               onClick={handleRegister}
@@ -761,7 +760,7 @@ const EventDetailPage = () => {
             </div>
           )}
 
-          {/* Non-merchandise registration status */}
+        
           {event.type !== 'Merchandise' && isRegistered ? (
             <div>
               {myRegistration?.statuses === 'Pending' && event.price > 0 ? (
@@ -770,11 +769,11 @@ const EventDetailPage = () => {
                 </div>
               ) : myRegistration?.statuses === 'Rejected' ? (
                 <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontWeight: 600 }}>
-                  ❌ Your registration was rejected{myRegistration.rejectionComment ? `: ${myRegistration.rejectionComment}` : ''}
+                   Your registration was rejected{myRegistration.rejectionComment ? `: ${myRegistration.rejectionComment}` : ''}
                 </div>
               ) : (
                 <div style={{ padding: '16px', background: 'rgba(34,197,94,0.1)', borderRadius: '12px', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', fontWeight: 600 }}>
-                  ✅ You are registered for this event
+                   You are registered for this event
                 </div>
               )}
               {/* Payment proof upload for pending paid registrations */}
@@ -812,7 +811,7 @@ const EventDetailPage = () => {
             </div>
           ) : event.type !== 'Merchandise' && deadlinePassed ? (
             <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-              ⏰ Registration deadline has passed
+               Registration deadline has passed
             </div>
           ) : event.type !== 'Merchandise' && eventEnded ? (
             <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
@@ -820,11 +819,11 @@ const EventDetailPage = () => {
             </div>
           ) : event.type !== 'Merchandise' && eventNotOpen ? (
             <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-              🚫 Registration is not open for this event
+               Registration is not open for this event
             </div>
           ) : event.type !== 'Merchandise' && isFull ? (
             <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-              🚫 Event is full
+               Event is full
             </div>
           ) : event.type !== 'Merchandise' && role === 'participant' && canRegister ? (
             !isTeamEvent && (
@@ -844,39 +843,29 @@ const EventDetailPage = () => {
           ) : null}
         </div>
 
-        {/* Discussion Forum Toggle */}
-        {role && (isRegistered || myOrders.length > 0) && (
-          <div>
-            <button
-              onClick={() => setShowForum(!showForum)}
-              style={{
-                padding: '12px 24px', background: 'rgba(168,85,247,0.15)',
-                border: '1px solid rgba(168,85,247,0.3)', borderRadius: '12px',
-                color: '#a855f7', fontWeight: 600, cursor: 'pointer', marginBottom: '1rem'
-              }}
-            >
-              💬 {showForum ? 'Hide' : 'Show'} Discussion Forum
-            </button>
-            {showForum && <DiscussionForum eventId={id} />}
-          </div>
-        )}
-
-        {/* Organizer can also see forum */}
-        {role === 'organizer' && event.organizer?._id && (
-          <div>
-            <button
-              onClick={() => setShowForum(!showForum)}
-              style={{
-                padding: '12px 24px', background: 'rgba(168,85,247,0.15)',
-                border: '1px solid rgba(168,85,247,0.3)', borderRadius: '12px',
-                color: '#a855f7', fontWeight: 600, cursor: 'pointer', marginBottom: '1rem'
-              }}
-            >
-              💬 {showForum ? 'Hide' : 'Show'} Discussion Forum
-            </button>
-            {showForum && <DiscussionForum eventId={id} />}
-          </div>
-        )}
+        
+        {/* Forum: visible to registered participants and the event's organizer */}
+        {(() => {
+          const userId = localStorage.getItem('userId');
+          const isEventOrganizer = role === 'organizer' && event.organizer?._id === userId;
+          const canSeeForum = isEventOrganizer || (role && (isRegistered || myOrders.length > 0));
+          if (!canSeeForum) return null;
+          return (
+            <div>
+              <button
+                onClick={() => setShowForum(!showForum)}
+                style={{
+                  padding: '12px 24px', background: 'rgba(168,85,247,0.15)',
+                  border: '1px solid rgba(168,85,247,0.3)', borderRadius: '12px',
+                  color: '#a855f7', fontWeight: 600, cursor: 'pointer', marginBottom: '1rem'
+                }}
+              >
+                {showForum ? 'Hide' : 'Show'} Discussion Forum
+              </button>
+              {showForum && <DiscussionForum eventId={id} isOrganizer={isEventOrganizer} />}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

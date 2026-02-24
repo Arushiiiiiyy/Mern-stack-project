@@ -51,14 +51,14 @@ const userSchema=new mongoose.Schema({
         resolvedAt:{type:Date},
         comment:{type:String}
     }],
-    //organizer extra fields
+    
     contactEmail:{type:String},
     discordWebhook:{type:String},
     disabled:{type:Boolean,default:false},
     archived:{type:Boolean,default:false}
 },{timestamps:true});
 
-// Virtual for full name
+
 userSchema.virtual('name').get(function() {
     return `${this.firstName || ''} ${this.lastName || ''}`.trim() || 'Unknown';
 });
@@ -66,7 +66,7 @@ userSchema.virtual('name').get(function() {
 userSchema.set('toJSON', { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
 
-// Password minimum length validation (skipped for already-hashed values)
+
 userSchema.pre('validate', function() {
     if (!this.isModified('password')) return;
     if (this.password.startsWith('$2')) return;

@@ -128,8 +128,8 @@ const OrganizerDetailPage = () => {
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>{event.name}</h3>
                     <div style={{ display: 'flex', gap: '16px', color: '#888', fontSize: '0.85rem' }}>
                       <span>{event.type}</span>
-                      <span>📍 {event.venue}</span>
-                      <span>📅 {new Date(event.startDate).toLocaleDateString()}</span>
+                      <span> {event.venue}</span>
+                      <span> {new Date(event.startDate).toLocaleDateString()}</span>
                     </div>
                   </div>
                   <span style={{

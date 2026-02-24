@@ -105,7 +105,6 @@ const TeamPage = () => {
           }}>{message}</div>
         )}
 
-        {/* Join a Team */}
         <div style={{
           background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '20px', padding: '24px', marginBottom: '2rem'
@@ -197,7 +196,7 @@ const TeamPage = () => {
           )}
         </div>
 
-        {/* Members */}
+        
         <h3 style={{ fontWeight: 700, marginBottom: '12px' }}>Members</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '2rem' }}>
           {team.members?.map((m, i) => (
@@ -220,7 +219,7 @@ const TeamPage = () => {
           ))}
         </div>
 
-        {/* Team Actions */}
+        
         {team.status === 'Forming' && (
           <div style={{ display: 'flex', gap: '10px', marginBottom: '2rem' }}>
             {team.leader === localStorage.getItem('userId') && (
