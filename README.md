@@ -235,3 +235,25 @@ Created by admin via admin dashboard
 
 Admin
 Seeded directly in database or through backend setup
+
+**PACKAGES USED**
+Package	Purpose
+express	- Web framework
+mongoose - 	MongoDB ODM
+dotenv - 	Load .env variables
+bcrypt	- Password hashing
+jsonwebtoken - 	JWT auth tokens
+cors	- Cross-origin requests
+multer -	File uploads (payment proof, images)
+nodemailer	
+qrcode	
+socket.io	
+ics-generator	
+nodemon (dev)	
+
+react + react-dom
+react-router-dom	
+axios	
+socket.io-client	
+react-qr-code	
+vite (dev)	
