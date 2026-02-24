@@ -24,15 +24,37 @@ const app=express();
 const httpServer = createServer(app);
 
 
-const allowedOrigin = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '');
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim().replace(/\/+$/, ''));
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, origin);           // return the ONE matched origin string
+    } else {
+      callback(new Error(`CORS blocked: ${origin}`));
+    }
+  },
+  credentials: true
+};
+
 const io = new Server(httpServer, {
-  cors: { origin: allowedOrigin, credentials: true }
+  cors: corsOptions
 });
 
 app.set('io', io);
 
 app.use(express.json());
-app.use(cors({ origin: allowedOrigin, credentials: true }));
+
+// Prevent duplicate Access-Control-Allow-Origin headers
+// (e.g. if Render's proxy also injects one)
+app.use((req, res, next) => {
+  res.removeHeader('Access-Control-Allow-Origin');
+  next();
+});
+app.use(cors(corsOptions));
 
 
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
